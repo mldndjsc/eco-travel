@@ -12,13 +12,13 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@CrossOrigin(origins = "http://localhost:8080")
+//@CrossOrigin(origins = "http://localhost:8080")
 @RestController
 @RequestMapping("/api/finansije")
 @RefreshScope
 public class InvoicesController {
 
-    @Value("${custom.welcome-message}")
+    @Value("${custom.welcome-message:Dobrodosli}")
     private String message;
     @GetMapping("/invoices/welcome")
     public String getMessage() { return message; }
