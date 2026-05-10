@@ -7,15 +7,19 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-@FeignClient(name = "booking-client", url = "http://localhost:8082", configuration = BookingFeignConfig.class)
+@FeignClient(
+        name = "booking-client",
+        url = "${rezervacije.service.url}",
+        configuration = BookingFeignConfig.class
+)
 public interface BookingClient {
 
     @GetMapping("/api/rezervacije/bookings/{id}")
-    public BookingResponseDto findBookingById(@PathVariable Long id);
+    BookingResponseDto findBookingById(@PathVariable Long id);
 
     @PutMapping("/api/rezervacije/bookings/{id}/status")
-    public void updateBookingStatus(@PathVariable Long id, @RequestParam String status);
+    void updateBookingStatus(@PathVariable Long id, @RequestParam String status);
 
-    @PutMapping(path = "/api/rezervacije/bookings/{id}/cancel-unpaid")
-    public void cancelBookingDueToNonPayment(@PathVariable Long id);
+    @PutMapping("/api/rezervacije/bookings/{id}/cancel-unpaid")
+    void cancelBookingDueToNonPayment(@PathVariable Long id);
 }

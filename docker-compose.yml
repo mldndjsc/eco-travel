@@ -83,6 +83,7 @@ services:
     container_name: finansije-cont
     environment:
       - CONFIG_SERVER_URL=http://config-service:8888
+      - REZERVACIJE_SERVICE_URL=http://rezervacije-service:8082
       - SPRING_DATASOURCE_URL=jdbc:mysql://db-mysql:3306/finansije_rezervacije_db?createDatabaseIfNotExist=true
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=root

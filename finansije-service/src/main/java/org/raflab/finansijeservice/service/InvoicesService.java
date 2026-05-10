@@ -57,8 +57,8 @@ public class InvoicesService {
             invoices.setTotal_amount(invoicesRequestDto.getSubtotal() + ((invoicesRequestDto.getSubtotal() / 100) * invoices.getTaxRates().getPercentage()));
         }
 
-        BookingResponseDto bookingResponseDto = bookingClient.findBookingById(invoicesRequestDto.getBookingId());
-        invoicesRequestDto.setBookingId(bookingResponseDto.getId());
+        // Verifikujemo da rezervacija postoji; bookingId iz zahteva ostaje izvor istine.
+        bookingClient.findBookingById(invoicesRequestDto.getBookingId());
 
         invoicesRepository.save(invoices);
     }
@@ -148,10 +148,12 @@ public class InvoicesService {
                     "Previse zahteva prema Bookings servisu. Faktura nije sacuvana, pokusajte ponovo kasnije."
             );
         }
-        throw new ResponseStatusException(
-                HttpStatus.SERVICE_UNAVAILABLE,
-                "Bookings servis trenutno nije dostupan."
-        );
+
+        if (t instanceof RuntimeException runtimeException) {
+            throw runtimeException;
+        }
+
+        throw new RuntimeException(t);
     }
 
     public void fallbackCancelUnpaidInvoice(Long invoiceId, Throwable t) {
