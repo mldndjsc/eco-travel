@@ -1,0 +1,135 @@
+version: '3.8'
+
+services:
+  # 1. CONFIG SERVIS - Centralna konfiguracija
+  config-service:
+    build:
+      context: .
+      dockerfile: config-service/Dockerfile
+    container_name: config-cont
+    ports:
+      - "8888:8888"
+    healthcheck:
+      # Da li je config server podignut (odgovara na /health ili samo port)
+      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - micro-network
+
+  # 2. BAZA PODATAKA: MySQL
+  db-mysql:
+    image: mysql:8.0
+    container_name: mysql-db
+    environment:
+      MYSQL_DATABASE: finansije_rezervacije_db
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - micro-network
+
+
+
+
+  # 3. GATEWAY SERVIS
+  gateway-service:
+    build: ./gateway-service
+    container_name: gateway-cont
+    ports:
+      - "8080:8080"
+    environment:
+      - CONFIG_SERVER_URL=http://config-service:8888
+      - AUTH_SERVICE_URL=http://auth-service:8086
+      #      - REZERVACIJE_SERVICE_URL=http://rezervacije-service:8082
+    #      - FINANSIJE_SERVICE_URL=http://finansije-service:8083
+
+    depends_on:
+      config-service:
+        condition: service_healthy
+    networks:
+      - micro-network
+
+  # 4. AUTH SERVICE
+  auth-service:
+    build: ./auth-service
+    container_name: auth-cont
+    environment:
+      - CONFIG_SERVER_URL=http://config-service:8888
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db-mysql:3306/finansije_rezervacije_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRINGDOC_SERVER_URL=http://localhost:8080
+    depends_on:
+      db-mysql:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+    networks:
+      - micro-network
+
+  # 5. FINANSIJE SERVICE
+    #  finansije-service:
+    #    build: ./finansije-service
+    #    container_name: finansije-cont
+      #    environment:
+      #      - CONFIG_SERVER_URL=http://config-service:8888
+      #      - REZERVACIJE_SERVICE_URL=http://rezervacije-service:8082
+      #      - SPRING_DATASOURCE_URL=jdbc:mysql://db-mysql:3306/finansije_rezervacije_db?createDatabaseIfNotExist=true
+      #      - SPRING_DATASOURCE_USERNAME=root
+      #      - SPRING_DATASOURCE_PASSWORD=root
+      #      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    #      - SPRINGDOC_SERVER_URL=http://localhost:8080
+      #    depends_on:
+        #      db-mysql:
+      #        condition: service_healthy
+        #      config-service:
+    #        condition: service_healthy
+      #    networks:
+        #      - micro-network
+
+  # 6. REZERVACIJE SERVICE
+    #  rezervacije-service:
+    #    build: ./rezervacije-service
+    #    container_name: rezervacije-cont
+      #    environment:
+      #      - CONFIG_SERVER_URL=http://config-service:8888
+      #      - FINANSIJE_SERVICE_URL=http://finansije-service:8083
+      #      - SMESTAJ_SERVICE_URL=http://smestaj-service:8087
+      #      - SPRING_DATASOURCE_URL=jdbc:mysql://db-mysql:3306/finansije_rezervacije_db?createDatabaseIfNotExist=true
+      #      - SPRING_DATASOURCE_USERNAME=root
+      #      - SPRING_DATASOURCE_PASSWORD=root
+      #      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    #      - SPRINGDOC_SERVER_URL=http://localhost:8080
+      #    depends_on:
+        #      db-mysql:
+      #        condition: service_healthy
+        #      config-service:
+    #        condition: service_healthy
+      #    networks:
+  #      - micro-network
+
+  # 7. ADMINER
+  adminer:
+    image: adminer
+    container_name: adminer-cont
+    ports:
+      - "8087:8080"
+    networks:
+      - micro-network
+
+networks:
+  micro-network:
+    driver: bridge
+
+volumes:
+  mysql_data:

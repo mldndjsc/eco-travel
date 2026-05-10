@@ -9,6 +9,7 @@ import org.springframework.core.Ordered;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ResponseStatusException;
@@ -26,14 +27,18 @@ public class GlobalApiFilter implements GlobalFilter, Ordered {
     private static final String RESPONSE_TIME_HEADER = "X-Internal-Duration-Ms";
     private static final String ECO_STATUS_HEADER = "X-Eco-Status";
     private final WebClient.Builder webClientBuilder;
-    private static final String AUTH_SERVICE_URL = "http://localhost:8086/api/auth/validate";
+    private final String authServiceUrl;
 
-    public GlobalApiFilter(WebClient.Builder webClientBuilder) {
+    public GlobalApiFilter(
+            WebClient.Builder webClientBuilder,
+            @Value("${AUTH_SERVICE_URL:http://localhost:8086}/api/auth/validate") String authServiceUrl
+    ) {
         this.webClientBuilder = webClientBuilder;
+        this.authServiceUrl = authServiceUrl;
     }
 
     private Mono<Void> continueChain(ServerWebExchange exchange, GatewayFilterChain chain, String traceId, long startTime) {
-        return chain.filter(exchange).then(Mono.fromRunnable(() -> {
+        exchange.getResponse().beforeCommit(() -> {
             long duration = System.currentTimeMillis() - startTime;
             exchange.getResponse().getHeaders().set(TRACE_ID_HEADER, traceId);
             exchange.getResponse().getHeaders().set(RESPONSE_TIME_HEADER, String.valueOf(duration));
@@ -46,7 +51,10 @@ public class GlobalApiFilter implements GlobalFilter, Ordered {
                     duration,
                     traceId
             );
-        }));
+            return Mono.empty();
+        });
+
+        return chain.filter(exchange);
     }
 
     private Mono<Void> rejectRequest(ServerWebExchange exchange, HttpStatus status, String message, String traceId, long startTime) {
@@ -99,7 +107,7 @@ public class GlobalApiFilter implements GlobalFilter, Ordered {
                 .request(builder -> builder.header(TRACE_ID_HEADER, traceId))
                 .build();
 
-        if (path.contains("/v3/api-docs") || path.contains("/swagger-ui") || path.contains("/auth")) {
+        if (path.contains("/v3/api-docs") || path.contains("/swagger-ui") || path.contains("/auth") || path.contains("webjars")) {
             return continueChain(traceAwareExchange, chain, traceId, startTime);
         }
 
@@ -109,7 +117,7 @@ public class GlobalApiFilter implements GlobalFilter, Ordered {
         }
 
         return webClientBuilder.build().get()
-                .uri(AUTH_SERVICE_URL)
+                .uri(authServiceUrl)
                 .header("X-API-KEY", apiKey)
                 .header(TRACE_ID_HEADER, traceId)
                 .retrieve()
