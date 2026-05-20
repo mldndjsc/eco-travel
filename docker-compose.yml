@@ -16,7 +16,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - micro-network
+      - backend
 
   # 2. BAZA PODATAKA: MySQL
   db-mysql:
@@ -35,7 +35,7 @@ services:
       timeout: 5s
       retries: 10
     networks:
-      - micro-network
+      - backend
 
 
 
@@ -49,19 +49,23 @@ services:
     environment:
       - CONFIG_SERVER_URL=http://config-service:8888
       - AUTH_SERVICE_URL=http://auth-service:8086
-      #      - REZERVACIJE_SERVICE_URL=http://rezervacije-service:8082
-    #      - FINANSIJE_SERVICE_URL=http://finansije-service:8083
+      - REZERVACIJE_SERVICE_URL=http://rezervacije-service:8082
+      - FINANSIJE_SERVICE_URL=http://finansije-service:8083
 
     depends_on:
       config-service:
         condition: service_healthy
     networks:
-      - micro-network
+      - frontend
+      - backend
 
   # 4. AUTH SERVICE
   auth-service:
     build: ./auth-service
     container_name: auth-cont
+    #    ports:
+    #      - "8086:8086"
+
     environment:
       - CONFIG_SERVER_URL=http://config-service:8888
       - SPRING_DATASOURCE_URL=jdbc:mysql://db-mysql:3306/finansije_rezervacije_db?createDatabaseIfNotExist=true
@@ -75,48 +79,48 @@ services:
       config-service:
         condition: service_healthy
     networks:
-      - micro-network
+      - backend
 
   # 5. FINANSIJE SERVICE
-    #  finansije-service:
-    #    build: ./finansije-service
-    #    container_name: finansije-cont
-      #    environment:
-      #      - CONFIG_SERVER_URL=http://config-service:8888
-      #      - REZERVACIJE_SERVICE_URL=http://rezervacije-service:8082
-      #      - SPRING_DATASOURCE_URL=jdbc:mysql://db-mysql:3306/finansije_rezervacije_db?createDatabaseIfNotExist=true
-      #      - SPRING_DATASOURCE_USERNAME=root
-      #      - SPRING_DATASOURCE_PASSWORD=root
-      #      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
-    #      - SPRINGDOC_SERVER_URL=http://localhost:8080
-      #    depends_on:
-        #      db-mysql:
-      #        condition: service_healthy
-        #      config-service:
-    #        condition: service_healthy
-      #    networks:
-        #      - micro-network
+  finansije-service:
+    build: ./finansije-service
+    container_name: finansije-cont
+    environment:
+      - CONFIG_SERVER_URL=http://config-service:8888
+      - REZERVACIJE_SERVICE_URL=http://rezervacije-service:8082
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db-mysql:3306/finansije_rezervacije_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRINGDOC_SERVER_URL=http://localhost:8080
+    depends_on:
+      db-mysql:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+    networks:
+      - backend
 
   # 6. REZERVACIJE SERVICE
-    #  rezervacije-service:
-    #    build: ./rezervacije-service
-    #    container_name: rezervacije-cont
-      #    environment:
-      #      - CONFIG_SERVER_URL=http://config-service:8888
-      #      - FINANSIJE_SERVICE_URL=http://finansije-service:8083
-      #      - SMESTAJ_SERVICE_URL=http://smestaj-service:8087
-      #      - SPRING_DATASOURCE_URL=jdbc:mysql://db-mysql:3306/finansije_rezervacije_db?createDatabaseIfNotExist=true
-      #      - SPRING_DATASOURCE_USERNAME=root
-      #      - SPRING_DATASOURCE_PASSWORD=root
-      #      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
-    #      - SPRINGDOC_SERVER_URL=http://localhost:8080
-      #    depends_on:
-        #      db-mysql:
-      #        condition: service_healthy
-        #      config-service:
-    #        condition: service_healthy
-      #    networks:
-  #      - micro-network
+  rezervacije-service:
+    build: ./rezervacije-service
+    container_name: rezervacije-cont
+    environment:
+      - CONFIG_SERVER_URL=http://config-service:8888
+      - FINANSIJE_SERVICE_URL=http://finansije-service:8083
+      - SMESTAJ_SERVICE_URL=http://smestaj-service:8087
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db-mysql:3306/finansije_rezervacije_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRINGDOC_SERVER_URL=http://localhost:8080
+    depends_on:
+      db-mysql:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+    networks:
+      - backend
 
   # 7. ADMINER
   adminer:
@@ -125,10 +129,13 @@ services:
     ports:
       - "8087:8080"
     networks:
-      - micro-network
+      - frontend
+      - backend
 
 networks:
-  micro-network:
+  frontend:
+    driver: bridge
+  backend:
     driver: bridge
 
 volumes:
