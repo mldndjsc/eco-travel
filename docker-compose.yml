@@ -16,7 +16,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - micro-network
+      - backend
 
   # 2. BAZA PODATAKA: MySQL
   db-mysql:
@@ -35,7 +35,7 @@ services:
       timeout: 5s
       retries: 10
     networks:
-      - micro-network
+      - backend
 
 
 
@@ -56,12 +56,16 @@ services:
       config-service:
         condition: service_healthy
     networks:
-      - micro-network
+      - frontend
+      - backend
 
   # 4. AUTH SERVICE
   auth-service:
     build: ./auth-service
     container_name: auth-cont
+#    ports:
+#      - "8086:8086"
+
     environment:
       - CONFIG_SERVER_URL=http://config-service:8888
       - SPRING_DATASOURCE_URL=jdbc:mysql://db-mysql:3306/finansije_rezervacije_db?createDatabaseIfNotExist=true
@@ -75,7 +79,7 @@ services:
       config-service:
         condition: service_healthy
     networks:
-      - micro-network
+      - backend
 
   # 5. FINANSIJE SERVICE
   finansije-service:
@@ -95,7 +99,7 @@ services:
       config-service:
         condition: service_healthy
     networks:
-      - micro-network
+      - backend
 
   # 6. REZERVACIJE SERVICE
   rezervacije-service:
@@ -116,7 +120,7 @@ services:
       config-service:
         condition: service_healthy
     networks:
-      - micro-network
+      - backend
 
   # 7. ADMINER
   adminer:
@@ -125,10 +129,13 @@ services:
     ports:
       - "8087:8080"
     networks:
-      - micro-network
+      - frontend
+      - backend
 
 networks:
-  micro-network:
+  frontend:
+    driver: bridge
+  backend:
     driver: bridge
 
 volumes:

@@ -21,7 +21,7 @@ COPY --from=build /app/config_repo ./config_repo
 # Eksternalizacija porta (Faktor III - Config)
 ENV SERVER_PORT=8888
 
-# Dokumentujemo port (Swagger će obično biti ovde)
+# Dokumentujemo port
 EXPOSE 8888
 
 # Komanda za pokretanje

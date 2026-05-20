@@ -22,7 +22,7 @@ WORKDIR /app
 # Kopiramo samo gotov .jar iz prve faze
 COPY --from=build /app/target/*.jar app.jar
 
-# Eksternalizacija porta (Faktor III - Config)
+# Eksternalizacija porta
 ENV SERVER_PORT=8083
 
 # Dokumentujemo port (Swagger će obično biti ovde)
