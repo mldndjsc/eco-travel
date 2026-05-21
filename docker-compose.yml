@@ -63,8 +63,8 @@ services:
   auth-service:
     build: ./auth-service
     container_name: auth-cont
-    #    ports:
-    #      - "8086:8086"
+#    ports:
+#      - "8086:8086"
 
     environment:
       - CONFIG_SERVER_URL=http://config-service:8888
