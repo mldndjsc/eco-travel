@@ -51,6 +51,8 @@ services:
       - AUTH_SERVICE_URL=http://auth-service:8086
       - REZERVACIJE_SERVICE_URL=http://rezervacije-service:8082
       - FINANSIJE_SERVICE_URL=http://finansije-service:8083
+      - ACCOMMODATION_SERVICE_URL=http://accommodation-service:8084
+      - MAINTENANCE_SERVICE_URL=http://maintenance-service:8085
 
     depends_on:
       config-service:
@@ -131,7 +133,42 @@ services:
     networks:
       - frontend
       - backend
+  # 8. ACCOMMODATION SERVICE
+  accommodation-service:
+    build: ./accommodation-service
+    container_name: accommodation-cont
+    environment:
+      - CONFIG_SERVER_URL=http://config-service:8888
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db-mysql:3306/finansije_rezervacije_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    depends_on:
+      db-mysql:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+    networks:
+      - backend
 
+  # 9. MAINTENANCE SERVICE
+  maintenance-service:
+    build: ./maintenance-service
+    container_name: maintenance-cont
+    environment:
+      - CONFIG_SERVER_URL=http://config-service:8888
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db-mysql:3306/finansije_rezervacije_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - ACCOMMODATION_SERVICE_URL=http://accommodation-service:8084
+    depends_on:
+      db-mysql:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+    networks:
+      - backend
 networks:
   frontend:
     driver: bridge
