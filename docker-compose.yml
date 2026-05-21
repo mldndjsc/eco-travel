@@ -155,6 +155,8 @@ services:
   maintenance-service:
     build: ./maintenance-service
     container_name: maintenance-cont
+    ports:
+      - "8085:8085"
     environment:
       - CONFIG_SERVER_URL=http://config-service:8888
       - SPRING_DATASOURCE_URL=jdbc:mysql://db-mysql:3306/finansije_rezervacije_db?createDatabaseIfNotExist=true

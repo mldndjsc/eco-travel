@@ -60,7 +60,15 @@ public class WorkOrderService {
 
         MaintenanceTask task = taskRepository.findById(dto.getTaskId())
                 .orElseThrow(() -> new EntityNotFoundException("Zadatak nije pronađen"));
+        boolean isDuplicate = workOrderRepository.existsDuplicate(
+                dto.getUnitId(),
+                dto.getWorkerId(),
+                dto.getScheduledFor()
+        );
 
+        if (isDuplicate) {
+            throw new IllegalStateException("Radnik već ima zakazan radni nalog za ovaj smeštaj na izabrani datum!");
+        }
         WorkOrder order = new WorkOrder();
         order.setUnitId(dto.getUnitId());
         order.setWorker(worker);
@@ -118,4 +126,13 @@ public class WorkOrderService {
                 .map(order -> order.getTask().getEstimatedDurationHours())
                 .reduce(0, Integer::sum); // Matematičko sumiranje sati
     }
+
+    @Transactional
+    public void deleteWorkOrder(Long id) {
+        if (!workOrderRepository.existsById(id)) {
+            throw new EntityNotFoundException("Nalog sa ID " + id + " nije pronađen.");
+        }
+        workOrderRepository.deleteById(id);
+    }
+
 }

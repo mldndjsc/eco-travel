@@ -57,7 +57,9 @@ public class WorkOrderController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Obriši radni nalog")
+    @ResponseStatus(HttpStatus.NO_CONTENT) // Ovo govori Swaggeru: "Očekuj 204, sve je u redu"
     public ResponseEntity<Void> deleteOrder(@PathVariable Long id) {
+        workOrderService.deleteWorkOrder(id);
         return ResponseEntity.noContent().build();
     }
 }
