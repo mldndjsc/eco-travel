@@ -15,8 +15,11 @@ import org.raflab.finansijeservice.dto.request.TaxRatesRequestDto;
 import org.raflab.finansijeservice.dto.request.TransactionsRequestDto;
 import org.raflab.finansijeservice.dto.response.TaxRatesResponseDto;
 import org.raflab.finansijeservice.dto.response.TransactionsResponseDto;
+import org.raflab.finansijeservice.messaging.event.TransactionCreatedEvent;
+import org.raflab.finansijeservice.messaging.publisher.TransactionEventPublisher;
 import org.raflab.finansijeservice.model.Invoices;
 import org.raflab.finansijeservice.model.PaymentMethods;
+import org.raflab.finansijeservice.model.TaxRates;
 import org.raflab.finansijeservice.model.Transactions;
 import org.raflab.finansijeservice.repository.InvoicesRepository;
 import org.raflab.finansijeservice.repository.PaymentMethodsRepository;
@@ -44,10 +47,70 @@ public class TransactionsService {
     @Autowired
     PaymentMethodsRepository paymentMethodsRepository;
 
-    private final BookingClient bookingClient;
+    @Autowired
+    TaxRatesRepository taxRatesRepository;
 
+    private final BookingClient bookingClient;
+    private final TransactionEventPublisher transactionEventPublisher;
+
+    @Transactional
     public void save(TransactionsRequestDto transactionsRequestDto){
-        transactionsRepository.save(TransactionsConverter.toTransactions(transactionsRequestDto));
+        Invoices invoice = resolveInvoice(transactionsRequestDto);
+        PaymentMethods paymentMethod = resolvePaymentMethod(transactionsRequestDto);
+
+        Transactions transaction = new Transactions();
+        transaction.setAmount(transactionsRequestDto.getAmount());
+        transaction.setDate(LocalDateTime.now());
+        transaction.setInvoice(invoice);
+        transaction.setPaymentMethod(paymentMethod);
+
+        transaction = transactionsRepository.save(transaction);
+
+        TransactionCreatedEvent event = new TransactionCreatedEvent(
+                transaction.getId(),
+                transactionsRequestDto.getInvoiceRequestDto().getBookingId(),
+                transactionsRequestDto.getInvoiceRequestDto().getInvoiceNumber(),
+                transactionsRequestDto.getAmount(),
+                transactionsRequestDto.getPaymentMethodsRequestDto().getMethodName(),
+                LocalDateTime.now()
+        );
+        transactionEventPublisher.publishTransactionCreated(event);
+    }
+
+    private Invoices resolveInvoice(TransactionsRequestDto transactionsRequestDto) {
+        String invoiceNumber = transactionsRequestDto.getInvoiceRequestDto().getInvoiceNumber();
+        Invoices existingInvoice = invoicesRepository.findInvoicesByInvoiceNumber(invoiceNumber);
+        if (existingInvoice != null) {
+            return existingInvoice;
+        }
+
+        TaxRates taxRates = taxRatesRepository
+                .findByTaxName(transactionsRequestDto.getInvoiceRequestDto().getTaxRatesRequest().getTaxName())
+                .orElseGet(() -> taxRatesRepository.save(
+                        TaxRatesConverter.toTaxRates(transactionsRequestDto.getInvoiceRequestDto().getTaxRatesRequest())
+                ));
+
+        Invoices invoice = InvoicesConverter.toInvoices(transactionsRequestDto.getInvoiceRequestDto());
+        invoice.setTaxRates(taxRates);
+        if (transactionsRequestDto.getInvoiceRequestDto().getTotal() == null) {
+            invoice.setTotal_amount(invoice.getSubtotal() + ((invoice.getSubtotal() / 100) * taxRates.getPercentage()));
+        } else {
+            invoice.setTotal_amount(transactionsRequestDto.getInvoiceRequestDto().getTotal());
+        }
+
+        return invoicesRepository.save(invoice);
+    }
+
+    private PaymentMethods resolvePaymentMethod(TransactionsRequestDto transactionsRequestDto) {
+        String methodName = transactionsRequestDto.getPaymentMethodsRequestDto().getMethodName();
+        PaymentMethods existingMethod = paymentMethodsRepository.findPaymentMethodsByMethodName(methodName);
+        if (existingMethod != null) {
+            return existingMethod;
+        }
+
+        return paymentMethodsRepository.save(
+                PaymentMethodsConverter.toPaymentMethods(transactionsRequestDto.getPaymentMethodsRequestDto())
+        );
     }
 
     public void updateById(TransactionsRequestDto transactionsRequestDto,Long id){

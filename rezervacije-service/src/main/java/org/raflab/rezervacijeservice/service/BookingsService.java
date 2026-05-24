@@ -138,6 +138,21 @@ public class BookingsService implements BookingPublisher {
         }
     }
 
+    public void markPaymentRecorded(Long id) {
+        if (bookingsRepository.existsById(id)) {
+            Bookings booking = bookingsRepository.findById(id).get();
+            String oldStatus = booking.getStatus();
+            String newStatus = "PAYMENT_RECORDED";
+
+            booking.setStatus(newStatus);
+            bookingsRepository.save(booking);
+            notifyObservers(id, oldStatus, newStatus);
+            return;
+        }
+
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking sa ID " + id + " ne postoji.");
+    }
+
     public void cancelBookingDueToNonPayment(Long id) {
         Bookings booking = bookingsRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking sa ID " + id + " ne postoji."));

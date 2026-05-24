@@ -99,6 +99,19 @@ public class InvoicesService {
         invoicesRepository.deleteById(id);
     }
 
+    public void markReservationFeedbackReceived(String invoiceNumber) {
+        Invoices invoice = invoicesRepository.findInvoicesByInvoiceNumber(invoiceNumber);
+        if (invoice == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Faktura sa brojem " + invoiceNumber + " ne postoji u finansije servisu.");
+        }
+
+        invoice.setStatus("RESERVATION_PAYMENT_RECORDED");
+        invoicesRepository.save(invoice);
+        System.out.println("RABBITMQ FEEDBACK APPLIED: Faktura " + invoiceNumber
+                + " je azurirana na status RESERVATION_PAYMENT_RECORDED.");
+    }
+
     @CircuitBreaker(name = "bookingServiceCB", fallbackMethod = "fallbackCancelUnpaidInvoice")
     @RateLimiter(name = "rezervacijeServiceRateLimit", fallbackMethod = "fallbackCancelUnpaidInvoiceRateLimit")
     public void cancelUnpaidInvoice(Long invoiceId) {
