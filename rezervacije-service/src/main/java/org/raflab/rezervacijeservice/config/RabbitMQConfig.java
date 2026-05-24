@@ -8,6 +8,7 @@ import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFacto
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.raflab.rezervacijeservice.messaging.event.BookingCreatedMaintenanceEvent;
 import org.raflab.rezervacijeservice.messaging.event.ReservationPaymentRecordedFeedbackEvent;
 import org.raflab.rezervacijeservice.messaging.event.TransactionCreatedEvent;
 import org.springframework.amqp.support.converter.DefaultClassMapper;
@@ -26,8 +27,11 @@ public class RabbitMQConfig {
     public static final String FINANCE_RESERVATION_FEEDBACK_QUEUE = "finansije.reservation-feedback.queue";
     public static final String EXCHANGE = "hotel.events.exchange";
     public static final String FEEDBACK_EXCHANGE = "hotel.feedback.exchange";
+    public static final String MAINTENANCE_EXCHANGE = "maintenance.events.exchange";
     public static final String TRANSACTION_CREATED_ROUTING_KEY = "finance.transaction.created";
     public static final String PAYMENT_RECORDED_FEEDBACK_ROUTING_KEY = "reservation.payment-recorded.feedback";
+    public static final String MAINTENANCE_BOOKING_QUEUE = "maintenance.booking-events.queue";
+    public static final String BOOKING_CREATED_MAINTENANCE_ROUTING_KEY = "reservation.booking.created";
 
     @Bean
     public Queue reservationsFinanceEventsQueue() {
@@ -40,6 +44,11 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Queue maintenanceBookingQueue() {
+        return new Queue(MAINTENANCE_BOOKING_QUEUE, true);
+    }
+
+    @Bean
     public TopicExchange exchange() {
         return new TopicExchange(EXCHANGE, true, false);
     }
@@ -47,6 +56,11 @@ public class RabbitMQConfig {
     @Bean
     public TopicExchange feedbackExchange() {
         return new TopicExchange(FEEDBACK_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public TopicExchange maintenanceExchange() {
+        return new TopicExchange(MAINTENANCE_EXCHANGE, true, false);
     }
 
     @Bean
@@ -68,13 +82,23 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Binding bookingCreatedMaintenanceBinding(
+            @Qualifier("maintenanceBookingQueue") Queue maintenanceBookingQueue,
+            @Qualifier("maintenanceExchange") TopicExchange maintenanceExchange) {
+        return BindingBuilder.bind(maintenanceBookingQueue)
+                .to(maintenanceExchange)
+                .with(BOOKING_CREATED_MAINTENANCE_ROUTING_KEY);
+    }
+
+    @Bean
     public MessageConverter jsonMessageConverter() {
         Jackson2JsonMessageConverter converter = new Jackson2JsonMessageConverter();
         DefaultClassMapper classMapper = new DefaultClassMapper();
         classMapper.setIdClassMapping(Map.of(
                 "TransactionCreatedEvent", TransactionCreatedEvent.class,
                 "org.raflab.finansijeservice.messaging.event.TransactionCreatedEvent", TransactionCreatedEvent.class,
-                "ReservationPaymentRecordedFeedbackEvent", ReservationPaymentRecordedFeedbackEvent.class
+                "ReservationPaymentRecordedFeedbackEvent", ReservationPaymentRecordedFeedbackEvent.class,
+                "BookingCreatedMaintenanceEvent", BookingCreatedMaintenanceEvent.class
         ));
         converter.setClassMapper(classMapper);
         return converter;
