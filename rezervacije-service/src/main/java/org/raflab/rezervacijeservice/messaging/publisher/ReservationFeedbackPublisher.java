@@ -2,7 +2,7 @@ package org.raflab.rezervacijeservice.messaging.publisher;
 
 import lombok.RequiredArgsConstructor;
 import org.raflab.rezervacijeservice.config.RabbitMQConfig;
-import org.raflab.rezervacijeservice.messaging.event.ReservationPaymentRecordedFeedbackEvent;
+import org.raflab.shared.events.ReservationPaymentRecordedFeedbackEvent;
 import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;

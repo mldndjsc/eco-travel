@@ -8,9 +8,9 @@ import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFacto
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.raflab.rezervacijeservice.messaging.event.BookingCreatedMaintenanceEvent;
-import org.raflab.rezervacijeservice.messaging.event.ReservationPaymentRecordedFeedbackEvent;
-import org.raflab.rezervacijeservice.messaging.event.TransactionCreatedEvent;
+import org.raflab.shared.events.BookingCreatedMaintenanceEvent;
+import org.raflab.shared.events.ReservationPaymentRecordedFeedbackEvent;
+import org.raflab.shared.events.TransactionCreatedEvent;
 import org.springframework.amqp.support.converter.DefaultClassMapper;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
@@ -96,8 +96,15 @@ public class RabbitMQConfig {
         DefaultClassMapper classMapper = new DefaultClassMapper();
         classMapper.setIdClassMapping(Map.of(
                 "TransactionCreatedEvent", TransactionCreatedEvent.class,
+                "org.raflab.rezervacijeservice.messaging.event.TransactionCreatedEvent", TransactionCreatedEvent.class,
                 "org.raflab.finansijeservice.messaging.event.TransactionCreatedEvent", TransactionCreatedEvent.class,
                 "ReservationPaymentRecordedFeedbackEvent", ReservationPaymentRecordedFeedbackEvent.class,
+                "org.raflab.rezervacijeservice.messaging.event.ReservationPaymentRecordedFeedbackEvent",
+                ReservationPaymentRecordedFeedbackEvent.class,
+                "org.raflab.finansijeservice.messaging.event.ReservationPaymentRecordedFeedbackEvent",
+                ReservationPaymentRecordedFeedbackEvent.class,
+                "org.raflab.rezervacijeservice.messaging.event.BookingCreatedMaintenanceEvent",
+                BookingCreatedMaintenanceEvent.class,
                 "BookingCreatedMaintenanceEvent", BookingCreatedMaintenanceEvent.class
         ));
         converter.setClassMapper(classMapper);

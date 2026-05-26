@@ -5,7 +5,6 @@ import org.raflab.rezervacijeservice.converter.CancellationPoliciesConverter;
 import org.raflab.rezervacijeservice.converter.GuestsConverter;
 import org.raflab.rezervacijeservice.dto.request.BookingsRequestDto;
 import org.raflab.rezervacijeservice.dto.response.BookingsResponseDto;
-import org.raflab.rezervacijeservice.messaging.event.BookingCreatedMaintenanceEvent;
 import org.raflab.rezervacijeservice.messaging.publisher.BookingMaintenancePublisher;
 import org.raflab.rezervacijeservice.model.Bookings;
 import org.raflab.rezervacijeservice.model.CancellationPolicies;
@@ -19,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import org.raflab.shared.events.BookingCreatedMaintenanceEvent;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;

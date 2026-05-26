@@ -1,7 +1,7 @@
 package org.raflab.rezervacijeservice.messaging.publisher;
 
 import org.raflab.rezervacijeservice.config.RabbitMQConfig;
-import org.raflab.rezervacijeservice.messaging.event.BookingCreatedMaintenanceEvent;
+import org.raflab.shared.events.BookingCreatedMaintenanceEvent;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 

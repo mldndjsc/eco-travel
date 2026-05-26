@@ -15,7 +15,6 @@ import org.raflab.finansijeservice.dto.request.TaxRatesRequestDto;
 import org.raflab.finansijeservice.dto.request.TransactionsRequestDto;
 import org.raflab.finansijeservice.dto.response.TaxRatesResponseDto;
 import org.raflab.finansijeservice.dto.response.TransactionsResponseDto;
-import org.raflab.finansijeservice.messaging.event.TransactionCreatedEvent;
 import org.raflab.finansijeservice.messaging.publisher.TransactionEventPublisher;
 import org.raflab.finansijeservice.model.Invoices;
 import org.raflab.finansijeservice.model.PaymentMethods;
@@ -30,6 +29,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import org.raflab.shared.events.TransactionCreatedEvent;
 
 import java.time.LocalDateTime;
 import java.util.List;

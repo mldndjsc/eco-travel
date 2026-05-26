@@ -2,8 +2,8 @@ package org.raflab.finansijeservice.messaging.listener;
 
 import lombok.RequiredArgsConstructor;
 import org.raflab.finansijeservice.config.RabbitMQConfig;
-import org.raflab.finansijeservice.messaging.event.ReservationPaymentRecordedFeedbackEvent;
 import org.raflab.finansijeservice.service.InvoicesService;
+import org.raflab.shared.events.ReservationPaymentRecordedFeedbackEvent;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 

@@ -2,7 +2,7 @@ package org.raflab.finansijeservice.messaging.publisher;
 
 import lombok.RequiredArgsConstructor;
 import org.raflab.finansijeservice.config.RabbitMQConfig;
-import org.raflab.finansijeservice.messaging.event.TransactionCreatedEvent;
+import org.raflab.shared.events.TransactionCreatedEvent;
 import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;

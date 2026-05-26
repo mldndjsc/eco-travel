@@ -1,4 +1,4 @@
-package org.raflab.rezervacijeservice.messaging.event;
+package org.raflab.shared.events;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
