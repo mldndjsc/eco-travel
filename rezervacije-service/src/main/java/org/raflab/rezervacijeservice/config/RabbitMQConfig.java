@@ -19,6 +19,8 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import static java.util.Map.entry;
+
 import java.util.Map;
 
 @Configuration
@@ -94,18 +96,14 @@ public class RabbitMQConfig {
     public MessageConverter jsonMessageConverter() {
         Jackson2JsonMessageConverter converter = new Jackson2JsonMessageConverter();
         DefaultClassMapper classMapper = new DefaultClassMapper();
-        classMapper.setIdClassMapping(Map.of(
-                "TransactionCreatedEvent", TransactionCreatedEvent.class,
-                "org.raflab.rezervacijeservice.messaging.event.TransactionCreatedEvent", TransactionCreatedEvent.class,
-                "org.raflab.finansijeservice.messaging.event.TransactionCreatedEvent", TransactionCreatedEvent.class,
-                "ReservationPaymentRecordedFeedbackEvent", ReservationPaymentRecordedFeedbackEvent.class,
-                "org.raflab.rezervacijeservice.messaging.event.ReservationPaymentRecordedFeedbackEvent",
-                ReservationPaymentRecordedFeedbackEvent.class,
-                "org.raflab.finansijeservice.messaging.event.ReservationPaymentRecordedFeedbackEvent",
-                ReservationPaymentRecordedFeedbackEvent.class,
-                "org.raflab.rezervacijeservice.messaging.event.BookingCreatedMaintenanceEvent",
-                BookingCreatedMaintenanceEvent.class,
-                "BookingCreatedMaintenanceEvent", BookingCreatedMaintenanceEvent.class
+        classMapper.setTrustedPackages("org.raflab.shared.events");
+        classMapper.setIdClassMapping(Map.ofEntries(
+                entry("TransactionCreatedEvent", TransactionCreatedEvent.class),
+                entry("org.raflab.shared.events.TransactionCreatedEvent", TransactionCreatedEvent.class),
+                entry("ReservationPaymentRecordedFeedbackEvent", ReservationPaymentRecordedFeedbackEvent.class),
+                entry("org.raflab.shared.events.ReservationPaymentRecordedFeedbackEvent", ReservationPaymentRecordedFeedbackEvent.class),
+                entry("BookingCreatedMaintenanceEvent", BookingCreatedMaintenanceEvent.class),
+                entry("org.raflab.shared.events.BookingCreatedMaintenanceEvent", BookingCreatedMaintenanceEvent.class)
         ));
         converter.setClassMapper(classMapper);
         return converter;

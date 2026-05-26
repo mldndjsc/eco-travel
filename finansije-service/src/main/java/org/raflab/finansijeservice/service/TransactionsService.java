@@ -114,15 +114,21 @@ public class TransactionsService {
     }
 
     public void updateById(TransactionsRequestDto transactionsRequestDto,Long id){
+        Invoices invoice = resolveInvoice(transactionsRequestDto);
+        PaymentMethods paymentMethod = resolvePaymentMethod(transactionsRequestDto);
 
         if(transactionsRepository.existsById(id)){
             Transactions transactions = transactionsRepository.findById(id).get();
             transactions.setAmount(transactionsRequestDto.getAmount());
-            transactions.setInvoice(InvoicesConverter.toInvoices(transactionsRequestDto.getInvoiceRequestDto()));
-            transactions.setPaymentMethod(PaymentMethodsConverter.toPaymentMethods(transactionsRequestDto.getPaymentMethodsRequestDto()));
+            transactions.setDate(LocalDateTime.now());
+            transactions.setInvoice(invoice);
+            transactions.setPaymentMethod(paymentMethod);
             transactionsRepository.save(transactions);
         }else {
-            transactionsRepository.save(TransactionsConverter.toTransactions(transactionsRequestDto));
+            Transactions transactions = TransactionsConverter.toTransactions(transactionsRequestDto);
+            transactions.setInvoice(invoice);
+            transactions.setPaymentMethod(paymentMethod);
+            transactionsRepository.save(transactions);
         }
     }
 
@@ -149,10 +155,7 @@ public class TransactionsService {
         Transactions transaction = TransactionsConverter.toTransactions(dto);
         transaction.setInvoice(invoice);
 
-        PaymentMethods method = paymentMethodsRepository.findPaymentMethodsByMethodName(dto.getPaymentMethodsRequestDto().getMethodName());
-        if(method == null){
-            throw new RuntimeException("Nije pronadjena metoda placanja za transakciju.");
-        }
+        PaymentMethods method = resolvePaymentMethod(dto);
         transaction.setPaymentMethod(method);
 
         transactionsRepository.save(transaction);
