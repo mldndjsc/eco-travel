@@ -1,15 +1,14 @@
 package org.raflab.finansijeservice.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
 
 @Entity
 @Data
+@Table(name = "payment_methods",
+        uniqueConstraints = @UniqueConstraint(columnNames = "methodName"))
 public class PaymentMethods {
 
     @Id
