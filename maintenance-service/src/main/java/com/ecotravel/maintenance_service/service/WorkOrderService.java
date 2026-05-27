@@ -11,6 +11,7 @@ import com.ecotravel.maintenance_service.repository.MaintenanceTaskRepository;
 import com.ecotravel.maintenance_service.repository.WorkOrderRepository;
 import com.ecotravel.maintenance_service.repository.WorkerRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.raflab.shared.events.BookingCreatedMaintenanceEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -135,4 +136,45 @@ public class WorkOrderService {
         workOrderRepository.deleteById(id);
     }
 
+    @Transactional
+    public void createCleaningWorkOrderFromBooking(BookingCreatedMaintenanceEvent event) {
+        Long cleaningWorkerId = 3L;
+        Long cleaningTaskId = 2L;
+
+        LocalDateTime scheduledFor = event.getEndDate().atTime(11, 0);
+
+        boolean duplicateExists = workOrderRepository.existsDuplicate(
+                event.getUnitId(),
+                cleaningWorkerId,
+                scheduledFor
+        );
+
+        if (duplicateExists) {
+            System.out.println("Maintenance work order vec postoji za unitId="
+                    + event.getUnitId()
+                    + ", workerId=" + cleaningWorkerId
+                    + ", scheduledFor=" + scheduledFor);
+            return;
+        }
+
+        Worker worker = workerRepository.findById(cleaningWorkerId)
+                .orElseThrow(() -> new EntityNotFoundException("Radnik za ciscenje nije pronadjen"));
+
+        MaintenanceTask task = taskRepository.findById(cleaningTaskId)
+                .orElseThrow(() -> new EntityNotFoundException("Task za generalno ciscenje nije pronadjen"));
+
+        WorkOrder order = new WorkOrder();
+        order.setUnitId(event.getUnitId());
+        order.setWorker(worker);
+        order.setTask(task);
+        order.setScheduledFor(scheduledFor);
+        order.setStatus(WorkOrderStatus.PENDING);
+
+        workOrderRepository.save(order);
+
+        System.out.println("Maintenance work order kreiran asinhrono za bookingId="
+                + event.getBookingId()
+                + ", unitId=" + event.getUnitId()
+                + ", scheduledFor=" + scheduledFor);
+    }
 }
