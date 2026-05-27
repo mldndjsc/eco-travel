@@ -1,11 +1,7 @@
 package org.raflab.finansijeservice.converter;
 
-import org.raflab.finansijeservice.dto.request.TaxRatesRequestDto;
 import org.raflab.finansijeservice.dto.request.TransactionsRequestDto;
-import org.raflab.finansijeservice.dto.response.PaymentMethodsResponseDto;
-import org.raflab.finansijeservice.dto.response.TaxRatesResponseDto;
 import org.raflab.finansijeservice.dto.response.TransactionsResponseDto;
-import org.raflab.finansijeservice.model.TaxRates;
 import org.raflab.finansijeservice.model.Transactions;
 
 import java.time.LocalDateTime;
@@ -18,8 +14,6 @@ public class TransactionsConverter {
         Transactions transactions = new Transactions();
         transactions.setAmount(transactionsRequestDto.getAmount());
         transactions.setDate(LocalDateTime.now());
-        transactions.setInvoice(InvoicesConverter.toInvoices(transactionsRequestDto.getInvoiceRequestDto()));
-        transactions.setPaymentMethod(PaymentMethodsConverter.toPaymentMethods(transactionsRequestDto.getPaymentMethodsRequestDto()));
 
         return transactions;
     }
@@ -29,8 +23,6 @@ public class TransactionsConverter {
         transactions.setId(id);
         transactions.setAmount(transactionsRequestDto.getAmount());
         transactions.setDate(LocalDateTime.now());
-        transactions.setInvoice(InvoicesConverter.toInvoices(transactionsRequestDto.getInvoiceRequestDto()));
-        transactions.setPaymentMethod(PaymentMethodsConverter.toPaymentMethods(transactionsRequestDto.getPaymentMethodsRequestDto()));
 
         return transactions;
     }

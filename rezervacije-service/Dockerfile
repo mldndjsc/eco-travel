@@ -3,14 +3,18 @@ FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
 # Kopiramo pom.xml i source kod
-COPY pom.xml .
+COPY shared-module/pom.xml ./shared-module/pom.xml
+COPY shared-module/src ./shared-module/src
+RUN mvn -f shared-module/pom.xml clean install -DskipTests
+
+COPY rezervacije-service/pom.xml .
 
 # Docker će ovaj layer skinuti samo ako se pom.xml promeni
 RUN mvn dependency:go-offline -B && \
     mvn dependency:resolve-plugins -B && \
     mvn io.github.git-commit-id:git-commit-id-maven-plugin:revision -B || true
 
-COPY src ./src
+COPY rezervacije-service/src ./src
 
 # Kompajliramo i pakujemo (preskačemo testove radi brzine demoa)
 RUN mvn clean package -DskipTests

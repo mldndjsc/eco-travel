@@ -85,11 +85,17 @@ services:
 
   # 5. FINANSIJE SERVICE
   finansije-service:
-    build: ./finansije-service
+    build:
+      context: .
+      dockerfile: finansije-service/Dockerfile
     container_name: finansije-cont
     environment:
       - CONFIG_SERVER_URL=http://config-service:8888
       - REZERVACIJE_SERVICE_URL=http://rezervacije-service:8082
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=guest
+      - SPRING_RABBITMQ_PASSWORD=guest
       - SPRING_DATASOURCE_URL=jdbc:mysql://db-mysql:3306/finansije_rezervacije_db?createDatabaseIfNotExist=true
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=root
@@ -99,18 +105,26 @@ services:
       db-mysql:
         condition: service_healthy
       config-service:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - backend
 
   # 6. REZERVACIJE SERVICE
   rezervacije-service:
-    build: ./rezervacije-service
+    build:
+      context: .
+      dockerfile: rezervacije-service/Dockerfile
     container_name: rezervacije-cont
     environment:
       - CONFIG_SERVER_URL=http://config-service:8888
       - FINANSIJE_SERVICE_URL=http://finansije-service:8083
       - SMESTAJ_SERVICE_URL=http://smestaj-service:8087
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=guest
+      - SPRING_RABBITMQ_PASSWORD=guest
       - SPRING_DATASOURCE_URL=jdbc:mysql://db-mysql:3306/finansije_rezervacije_db?createDatabaseIfNotExist=true
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=root
@@ -120,6 +134,8 @@ services:
       db-mysql:
         condition: service_healthy
       config-service:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - backend
@@ -150,6 +166,21 @@ services:
         condition: service_healthy
     networks:
       - backend
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - backend
+
 
   # 9. MAINTENANCE SERVICE
   maintenance-service:

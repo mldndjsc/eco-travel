@@ -5,6 +5,7 @@ import org.raflab.rezervacijeservice.converter.CancellationPoliciesConverter;
 import org.raflab.rezervacijeservice.converter.GuestsConverter;
 import org.raflab.rezervacijeservice.dto.request.BookingsRequestDto;
 import org.raflab.rezervacijeservice.dto.response.BookingsResponseDto;
+import org.raflab.rezervacijeservice.messaging.publisher.BookingMaintenancePublisher;
 import org.raflab.rezervacijeservice.model.Bookings;
 import org.raflab.rezervacijeservice.model.CancellationPolicies;
 import org.raflab.rezervacijeservice.model.Guests;
@@ -17,7 +18,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import org.raflab.shared.events.BookingCreatedMaintenanceEvent;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -33,10 +36,13 @@ public class BookingsService implements BookingPublisher {
     CancellationPoliciesRepository cancellationPoliciesRepository;
 
     private final List<BookingSubscriber> observers = new ArrayList<>();
+    private final BookingMaintenancePublisher bookingMaintenancePublisher;
 
     @Autowired
-    public BookingsService(List<BookingSubscriber> observers) {
+    public BookingsService(List<BookingSubscriber> observers,
+                           BookingMaintenancePublisher bookingMaintenancePublisher) {
         this.observers.addAll(observers);
+        this.bookingMaintenancePublisher = bookingMaintenancePublisher;
     }
 
     @Override
@@ -81,7 +87,18 @@ public class BookingsService implements BookingPublisher {
             bookings.setGuest(newGuest);
         }
 
-        bookingsRepository.save(bookings);
+        Bookings savedBooking = bookingsRepository.save(bookings);
+
+        bookingMaintenancePublisher.publishBookingCreated(
+                new BookingCreatedMaintenanceEvent(
+                        savedBooking.getId(),
+                        savedBooking.getUnitId().longValue(),
+                        savedBooking.getStartDate(),
+                        savedBooking.getEndDate(),
+                        savedBooking.getStatus(),
+                        LocalDateTime.now()
+                )
+        );
     }
 
     public void updateById(BookingsRequestDto bookingsRequestDto, Long id) {
@@ -136,6 +153,21 @@ public class BookingsService implements BookingPublisher {
         } else {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking sa ID " + id + " ne postoji.");
         }
+    }
+
+    public void markPaymentRecorded(Long id) {
+        if (bookingsRepository.existsById(id)) {
+            Bookings booking = bookingsRepository.findById(id).get();
+            String oldStatus = booking.getStatus();
+            String newStatus = "PAYMENT_RECORDED";
+
+            booking.setStatus(newStatus);
+            bookingsRepository.save(booking);
+            notifyObservers(id, oldStatus, newStatus);
+            return;
+        }
+
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking sa ID " + id + " ne postoji.");
     }
 
     public void cancelBookingDueToNonPayment(Long id) {
