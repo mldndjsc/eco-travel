@@ -19,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import org.raflab.shared.events.BookingCreatedMaintenanceEvent;
+import org.raflab.shared.events.MaintenanceWorkOrderCreatedFeedbackEvent;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -34,6 +35,8 @@ public class BookingsService implements BookingPublisher {
     GuestsRepository guestsRepository;
     @Autowired
     CancellationPoliciesRepository cancellationPoliciesRepository;
+    @Autowired
+    BookingStatusLogsService bookingStatusLogsService;
 
     private final List<BookingSubscriber> observers = new ArrayList<>();
     private final BookingMaintenancePublisher bookingMaintenancePublisher;
@@ -183,6 +186,22 @@ public class BookingsService implements BookingPublisher {
         bookingsRepository.save(booking);
 
         notifyObservers(id, oldStatus, "CANCELLED");
+    }
+
+    public void recordMaintenanceWorkOrderCreated(MaintenanceWorkOrderCreatedFeedbackEvent event) {
+        Bookings booking = bookingsRepository.findById(event.getBookingId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Booking sa ID " + event.getBookingId() + " ne postoji."));
+
+        bookingStatusLogsService.logStatusChange(
+                booking.getId(),
+                booking.getStatus(),
+                "MAINTENANCE_WORK_ORDER_CREATED"
+        );
+
+        System.out.println("RABBITMQ FEEDBACK APPLIED: Booking " + booking.getId()
+                + " je dobio maintenance potvrdu za workOrderId=" + event.getWorkOrderId()
+                + ", scheduledFor=" + event.getScheduledFor());
     }
 
     public List<BookingsResponseDto> searchBookingsByGuestAndStatus(String searchTerm, String status) {
