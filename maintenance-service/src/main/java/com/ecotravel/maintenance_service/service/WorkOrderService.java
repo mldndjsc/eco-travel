@@ -5,6 +5,7 @@ import com.ecotravel.maintenance_service.client.dto.UnitResponseDTO;
 import com.ecotravel.maintenance_service.dto.WorkOrderRequestDTO;
 import com.ecotravel.maintenance_service.dto.WorkOrderResponseDTO;
 import com.ecotravel.maintenance_service.mapper.MaintenanceMapper;
+import com.ecotravel.maintenance_service.messaging.publisher.MaintenanceFeedbackPublisher;
 import com.ecotravel.maintenance_service.model.*;
 import com.ecotravel.maintenance_service.repository.MaintenanceLogRepository;
 import com.ecotravel.maintenance_service.repository.MaintenanceTaskRepository;
@@ -12,6 +13,7 @@ import com.ecotravel.maintenance_service.repository.WorkOrderRepository;
 import com.ecotravel.maintenance_service.repository.WorkerRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.raflab.shared.events.BookingCreatedMaintenanceEvent;
+import org.raflab.shared.events.MaintenanceWorkOrderCreatedFeedbackEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,16 +30,19 @@ public class WorkOrderService {
     private final MaintenanceLogRepository logRepository;
     private final MaintenanceMapper mapper;
     private final AccommodationClientFacade accommodationClientFacade;
+    private final MaintenanceFeedbackPublisher maintenanceFeedbackPublisher;
 
     public WorkOrderService(WorkOrderRepository workOrderRepository, WorkerRepository workerRepository,
                             MaintenanceTaskRepository taskRepository, MaintenanceLogRepository logRepository,
-                            MaintenanceMapper mapper, AccommodationClientFacade accommodationClientFacade) {
+                            MaintenanceMapper mapper, AccommodationClientFacade accommodationClientFacade,
+                            MaintenanceFeedbackPublisher maintenanceFeedbackPublisher) {
         this.workOrderRepository = workOrderRepository;
         this.workerRepository = workerRepository;
         this.taskRepository = taskRepository;
         this.logRepository = logRepository;
         this.mapper = mapper;
         this.accommodationClientFacade = accommodationClientFacade;
+        this.maintenanceFeedbackPublisher = maintenanceFeedbackPublisher;
     }
     public WorkOrderResponseDTO getWorkOrderById(Long id) {
         WorkOrder order = workOrderRepository.findById(id)
@@ -154,6 +159,18 @@ public class WorkOrderService {
                     + event.getUnitId()
                     + ", workerId=" + cleaningWorkerId
                     + ", scheduledFor=" + scheduledFor);
+
+            maintenanceFeedbackPublisher.publishWorkOrderCreatedFeedback(
+                    new MaintenanceWorkOrderCreatedFeedbackEvent(
+                            event.getBookingId(),
+                            event.getUnitId(),
+                            null,
+                            "ALREADY_EXISTS",
+                            scheduledFor,
+                            LocalDateTime.now(),
+                            "Maintenance servis je prepoznao da work order vec postoji za dati booking."
+                    )
+            );
             return;
         }
 
@@ -170,11 +187,23 @@ public class WorkOrderService {
         order.setScheduledFor(scheduledFor);
         order.setStatus(WorkOrderStatus.PENDING);
 
-        workOrderRepository.save(order);
+        WorkOrder savedOrder = workOrderRepository.save(order);
 
         System.out.println("Maintenance work order kreiran asinhrono za bookingId="
                 + event.getBookingId()
                 + ", unitId=" + event.getUnitId()
                 + ", scheduledFor=" + scheduledFor);
+
+        maintenanceFeedbackPublisher.publishWorkOrderCreatedFeedback(
+                new MaintenanceWorkOrderCreatedFeedbackEvent(
+                        event.getBookingId(),
+                        event.getUnitId(),
+                        savedOrder.getId(),
+                        savedOrder.getStatus().name(),
+                        savedOrder.getScheduledFor(),
+                        LocalDateTime.now(),
+                        "Maintenance servis je kreirao work order za zavrsno ciscenje."
+                )
+        );
     }
 }

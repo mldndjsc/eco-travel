@@ -1,22 +1,32 @@
-# Faza 1: Build (Kompajliranje)
+# Faza 1: Build faza (Koristimo Maven i JDK)
 FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /app
-COPY pom.xml .
-# Preuzimanje zavisnosti (ubrzava ponovne build-ove)
+
+# 1. Prvo kopiramo i instaliramo shared-module u Docker
+COPY shared-module/pom.xml ./shared-module/pom.xml
+COPY shared-module/src ./shared-module/src
+RUN mvn -f shared-module/pom.xml clean install -DskipTests
+
+# 2. Zatim kopiramo pom.xml za accommodation-service
+COPY accommodation-service/pom.xml .
+
+# Preuzimamo zavisnosti
 RUN mvn dependency:go-offline -B
-COPY src ./src
-# Pakovanje aplikacije uz preskakanje testova
+
+# 3. Kopiramo source kod i pakujemo accommodation-service
+COPY accommodation-service/src ./src
 RUN mvn clean package -DskipTests
 
-# Faza 2: Runtime (Pokretanje)
+# Faza 2: Runtime faza
 FROM eclipse-temurin:21-jre
 WORKDIR /app
-# Kopiranje samo generisanog JAR fajla iz prethodne faze
+
+# Kopiramo samo gotov .jar iz prve faze
 COPY --from=build /app/target/*.jar app.jar
 
-# Definisanje porta (8084 je za accommodation)
+# Eksternalizacija porta za accommodation
 ENV SERVER_PORT=8084
 EXPOSE 8084
 
-# Pokretanje aplikacije
+# Komanda za pokretanje
 ENTRYPOINT ["java", "-jar", "app.jar"]

@@ -151,7 +151,9 @@ services:
       - backend
   # 8. ACCOMMODATION SERVICE
   accommodation-service:
-    build: ./accommodation-service
+    build:
+      context: .
+      dockerfile: accommodation-service/Dockerfile # Putanja do tvog Dockerfile-a
     container_name: accommodation-cont
     environment:
       - CONFIG_SERVER_URL=http://config-service:8888
@@ -188,7 +190,9 @@ services:
 
   # 9. MAINTENANCE SERVICE
   maintenance-service:
-    build: ./maintenance-service
+    build:
+      context: . # Tačka znači da gleda iz glavnog root foldera projekta
+      dockerfile: maintenance-service/Dockerfile # Putanja do tvog Dockerfile-a
     container_name: maintenance-cont
     ports:
       - "8085:8085"
