@@ -6,14 +6,14 @@ import com.ecotravel.maintenance_service.dto.WorkOrderRequestDTO;
 import com.ecotravel.maintenance_service.dto.WorkOrderResponseDTO;
 import com.ecotravel.maintenance_service.mapper.MaintenanceMapper;
 import com.ecotravel.maintenance_service.messaging.publisher.MaintenanceFeedbackPublisher;
+import com.ecotravel.maintenance_service.messaging.publisher.WorkOrderPublisher;
 import com.ecotravel.maintenance_service.model.*;
 import com.ecotravel.maintenance_service.repository.MaintenanceLogRepository;
 import com.ecotravel.maintenance_service.repository.MaintenanceTaskRepository;
 import com.ecotravel.maintenance_service.repository.WorkOrderRepository;
 import com.ecotravel.maintenance_service.repository.WorkerRepository;
 import jakarta.persistence.EntityNotFoundException;
-import org.raflab.shared.events.BookingCreatedMaintenanceEvent;
-import org.raflab.shared.events.MaintenanceWorkOrderCreatedFeedbackEvent;
+import org.raflab.shared.events.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,11 +31,12 @@ public class WorkOrderService {
     private final MaintenanceMapper mapper;
     private final AccommodationClientFacade accommodationClientFacade;
     private final MaintenanceFeedbackPublisher maintenanceFeedbackPublisher;
+    private final WorkOrderPublisher workOrderPublisher;
 
     public WorkOrderService(WorkOrderRepository workOrderRepository, WorkerRepository workerRepository,
                             MaintenanceTaskRepository taskRepository, MaintenanceLogRepository logRepository,
                             MaintenanceMapper mapper, AccommodationClientFacade accommodationClientFacade,
-                            MaintenanceFeedbackPublisher maintenanceFeedbackPublisher) {
+                            MaintenanceFeedbackPublisher maintenanceFeedbackPublisher, WorkOrderPublisher workOrderPublisher) {
         this.workOrderRepository = workOrderRepository;
         this.workerRepository = workerRepository;
         this.taskRepository = taskRepository;
@@ -43,6 +44,7 @@ public class WorkOrderService {
         this.mapper = mapper;
         this.accommodationClientFacade = accommodationClientFacade;
         this.maintenanceFeedbackPublisher = maintenanceFeedbackPublisher;
+        this.workOrderPublisher = workOrderPublisher;
     }
     public WorkOrderResponseDTO getWorkOrderById(Long id) {
         WorkOrder order = workOrderRepository.findById(id)
@@ -83,6 +85,9 @@ public class WorkOrderService {
         order.setStatus(WorkOrderStatus.PENDING);
 
         WorkOrder saved = workOrderRepository.save(order);
+        workOrderPublisher.publishWorkOrderCreated(
+                new WorkOrderCreatedEvent(saved.getUnitId(), saved.getId(), saved.getScheduledFor(), saved.getTask().getEstimatedDurationHours())
+        );
         return mapper.toResponseDTO(saved);
     }
 
@@ -118,6 +123,8 @@ public class WorkOrderService {
         log.setNotes(notes);
         logRepository.save(log);
 
+        workOrderPublisher.publishWorkOrderCompleted(new WorkOrderCompletedEvent(updated.getUnitId(), updated.getId()));
+
         return mapper.toResponseDTO(updated);
     }
     public Integer calculateRemainingWorkloadForWorker(Long workerId) {
@@ -135,10 +142,12 @@ public class WorkOrderService {
 
     @Transactional
     public void deleteWorkOrder(Long id) {
-        if (!workOrderRepository.existsById(id)) {
-            throw new EntityNotFoundException("Nalog sa ID " + id + " nije pronađen.");
-        }
+        WorkOrder order = workOrderRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Nalog sa ID " + id + " nije pronađen."));
+
+        Long unitId = order.getUnitId();
         workOrderRepository.deleteById(id);
+        workOrderPublisher.publishWorkOrderDeleted(new WorkOrderDeletedEvent(unitId, id));
     }
 
     @Transactional
