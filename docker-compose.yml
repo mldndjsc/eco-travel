@@ -53,6 +53,8 @@ services:
       - FINANSIJE_SERVICE_URL=http://finansije-service:8083
       - ACCOMMODATION_SERVICE_URL=http://accommodation-service:8084
       - MAINTENANCE_SERVICE_URL=http://maintenance-service:8085
+      - AVANTURE_SERVICE_URL=http://avanture-service:8088
+      - VODICI_SERVICE_URL=http://vodici-service:8089
 
     depends_on:
       config-service:
@@ -140,7 +142,52 @@ services:
     networks:
       - backend
 
-  # 7. ADMINER
+  # 7. AVANTURE SERVICE
+  avanture-service:
+    build:
+      context: .
+      dockerfile: avanture-service/Dockerfile
+    container_name: avanture-cont
+    environment:
+      - CONFIG_SERVER_URL=http://config-service:8888
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db-mysql:3306/ekoturizam_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - VODICI_SERVICE_URL=http://vodici-service:8089
+      - SMESTAJ_SERVICE_URL=http://accommodation-service:8084
+      - BOOKING_SERVICE_URL=http://rezervacije-service:8082
+      - SPRINGDOC_SERVER_URL=http://localhost:8080
+    depends_on:
+      db-mysql:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+    networks:
+      - backend
+
+  # 8. VODICI SERVICE
+  vodici-service:
+    build:
+      context: .
+      dockerfile: vodici-service/Dockerfile
+    container_name: vodici-cont
+    environment:
+      - CONFIG_SERVER_URL=http://config-service:8888
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db-mysql:3306/ekoturizam_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRINGDOC_SERVER_URL=http://localhost:8080
+    depends_on:
+      db-mysql:
+        condition: service_healthy
+      config-service:
+        condition: service_healthy
+    networks:
+      - backend
+
+  # 9. ADMINER
   adminer:
     image: adminer
     container_name: adminer-cont
@@ -149,7 +196,7 @@ services:
     networks:
       - frontend
       - backend
-  # 8. ACCOMMODATION SERVICE
+  # 10. ACCOMMODATION SERVICE
   accommodation-service:
     build:
       context: .
