@@ -61,4 +61,37 @@ public class AvailabilityService {
         }
         availabilityRepository.deleteById(id);
     }
+
+    @Transactional
+    public void blockUnitForMaintenance(Long unitId, Long workOrderId, java.time.LocalDateTime scheduledFor, Integer durationHours) {
+        Unit unit = unitRepository.findById(unitId)
+                .orElseThrow(() -> new EntityNotFoundException("Smeštaj sa ID " + unitId + " nije pronađen"));
+
+        java.time.LocalDate startDate = scheduledFor.toLocalDate();
+        java.time.LocalDate endDate = scheduledFor.plusHours(durationHours != null ? durationHours : 2).toLocalDate();
+
+        AvailabilityCalendar block = new AvailabilityCalendar();
+        block.setStartDate(startDate);
+        block.setEndDate(endDate);
+        block.setReason("MAINTENANCE_WORK_ORDER_" + workOrderId); // Specifičan razlog da bismo znali šta da brišemo!
+        block.setUnit(unit);
+
+        availabilityRepository.save(block);
+        System.out.println(">>> KALENDAR AŽURIRAN: Blokiran termin za održavanje naloga " + workOrderId);
+    }
+
+    @Transactional
+    public void unblockUnitFromMaintenance(Long unitId, Long workOrderId) {
+        String reasonToFind = "MAINTENANCE_WORK_ORDER_" + workOrderId;
+
+        // Nalazimo sve kalendare za ovaj unit i brišemo onaj koji ima ovaj specifičan razlog
+        List<AvailabilityCalendar> calendars = availabilityRepository.findByUnitId(unitId);
+        for (AvailabilityCalendar cal : calendars) {
+            if (reasonToFind.equals(cal.getReason())) {
+                availabilityRepository.delete(cal);
+                System.out.println(">>> KALENDAR AŽURIRAN: Oslobođen termin za održavanje naloga " + workOrderId);
+                break; // Našli smo ga, prekidamo petlju
+            }
+        }
+    }
 }
