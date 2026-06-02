@@ -8,8 +8,11 @@ import com.ecotravel.avantura.dto.response.*;
 import com.ecotravel.avantura.entity.*;
 import com.ecotravel.avantura.exception.BusinessException;
 import com.ecotravel.avantura.exception.ResourceNotFoundException;
+import com.ecotravel.avantura.messaging.publisher.AdventureEventPublisher;
 import com.ecotravel.avantura.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.raflab.shared.events.AdventureCreatedEvent;
+import org.raflab.shared.events.AdventureDeletedEvent;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +31,7 @@ public class AdventureService {
     private final TimeSlotRepository timeSlotRepository;
     private final GearRequirementRepository gearRequirementRepository;
     private final AdventureReviewRepository reviewRepository;
+    private final AdventureEventPublisher eventPublisher;
 
     @Transactional
     public AdventureResponseDTO create(AdventureRequestDTO dto) {
@@ -39,7 +43,14 @@ public class AdventureService {
         if (dto.getCategoryId() != null) {
             adventure.setCategory(categoryService.getOrThrow(dto.getCategoryId()));
         }
-        return toDTO(adventureRepository.save(adventure));
+        AdventureResponseDTO response = toDTO(adventureRepository.save(adventure));
+        eventPublisher.publishAdventureCreated(new AdventureCreatedEvent(
+                response.getId(),
+                response.getTitle(),
+                response.getDifficulty() != null ? response.getDifficulty().name() : null,
+                response.getCategory() != null ? response.getCategory().getName() : null
+        ));
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -68,10 +79,10 @@ public class AdventureService {
 
     @Transactional
     public void delete(Long id) {
-        if (!adventureRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Avantura sa ID " + id + " nije pronadjena");
-        }
+        Adventure adventure = getOrThrow(id);
+        String title = adventure.getTitle();
         adventureRepository.deleteById(id);
+        eventPublisher.publishAdventureDeleted(new AdventureDeletedEvent(id, title));
     }
 
     @Transactional
