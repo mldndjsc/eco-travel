@@ -1,6 +1,9 @@
-version: '3.8'
-
 services:
+
+  # ─────────────────────────────────────────
+  # INFRASTRUKTURA
+  # ─────────────────────────────────────────
+
   # 1. CONFIG SERVIS - Centralna konfiguracija
   config-service:
     build:
@@ -10,7 +13,6 @@ services:
     ports:
       - "8888:8888"
     healthcheck:
-      # Da li je config server podignut (odgovara na /health ili samo port)
       test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
       interval: 10s
       timeout: 5s
@@ -37,10 +39,81 @@ services:
     networks:
       - backend
 
+  # 3. RABBITMQ
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - backend
 
+  # ─────────────────────────────────────────
+  # OBSERVABILNOST
+  # ─────────────────────────────────────────
 
+  # 4. EUREKA - Servisni registar (service registry za load balancing)
+  eureka-server:
+    build: ./eureka-server
+    container_name: eureka-cont
+    ports:
+      - "8761:8761"
+    networks:
+      - backend
+      - frontend
+    restart: on-failure
 
-  # 3. GATEWAY SERVIS
+  # 5. ZIPKIN - Distribuirani tracing
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: zipkin-cont
+    ports:
+      - "9411:9411"
+    networks:
+      - backend
+    restart: always
+
+  # 6. LOKI - Centralizovano logovanje
+  loki:
+    image: grafana/loki:2.9.2
+    container_name: loki-cont
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - backend
+    restart: always
+
+  # 7. GRAFANA - Vizuelizacija (Loki logovi + MySQL poslovni podaci)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana-cont
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+    networks:
+      - backend
+      - frontend
+    depends_on:
+      - loki
+    restart: always
+
+  # ─────────────────────────────────────────
+  # MIKROSERVISI
+  # ─────────────────────────────────────────
+
+  # 8. GATEWAY SERVIS - Load balancer, ulazna tačka
   gateway-service:
     build: ./gateway-service
     container_name: gateway-cont
@@ -51,11 +124,9 @@ services:
       - AUTH_SERVICE_URL=http://auth-service:8086
       - REZERVACIJE_SERVICE_URL=http://rezervacije-service:8082
       - FINANSIJE_SERVICE_URL=http://finansije-service:8083
-      - ACCOMMODATION_SERVICE_URL=http://accommodation-service:8084
       - MAINTENANCE_SERVICE_URL=http://maintenance-service:8085
       - AVANTURE_SERVICE_URL=http://avanture-service:8088
       - VODICI_SERVICE_URL=http://vodici-service:8089
-
     depends_on:
       config-service:
         condition: service_healthy
@@ -63,13 +134,10 @@ services:
       - frontend
       - backend
 
-  # 4. AUTH SERVICE
+  # 9. AUTH SERVICE
   auth-service:
     build: ./auth-service
     container_name: auth-cont
-#    ports:
-#      - "8086:8086"
-
     environment:
       - CONFIG_SERVER_URL=http://config-service:8888
       - SPRING_DATASOURCE_URL=jdbc:mysql://db-mysql:3306/finansije_rezervacije_db?createDatabaseIfNotExist=true
@@ -85,7 +153,7 @@ services:
     networks:
       - backend
 
-  # 5. FINANSIJE SERVICE
+  # 10. FINANSIJE SERVICE
   finansije-service:
     build:
       context: .
@@ -113,12 +181,11 @@ services:
     networks:
       - backend
 
-  # 6. REZERVACIJE SERVICE
+  # 11. REZERVACIJE SERVICE
   rezervacije-service:
     build:
       context: .
       dockerfile: rezervacije-service/Dockerfile
-    container_name: rezervacije-cont
     environment:
       - CONFIG_SERVER_URL=http://config-service:8888
       - FINANSIJE_SERVICE_URL=http://finansije-service:8083
@@ -142,7 +209,7 @@ services:
     networks:
       - backend
 
-  # 7. AVANTURE SERVICE
+  # 12. AVANTURE SERVICE
   avanture-service:
     build:
       context: .
@@ -166,7 +233,7 @@ services:
     networks:
       - backend
 
-  # 8. VODICI SERVICE
+  # 13. VODICI SERVICE
   vodici-service:
     build:
       context: .
@@ -187,21 +254,15 @@ services:
     networks:
       - backend
 
-  # 9. ADMINER
-  adminer:
-    image: adminer
-    container_name: adminer-cont
-    ports:
-      - "8087:8080"
-    networks:
-      - frontend
-      - backend
-  # 10. ACCOMMODATION SERVICE
+  # 14. ACCOMMODATION SERVICE - skaliran na 3 instance za demonstraciju load balancinga
+  # Pokretanje: docker compose up --scale accommodation-service=3 -d
+  # Ili koristiti deploy.replicas (Docker Compose v2+):
   accommodation-service:
     build:
       context: .
-      dockerfile: accommodation-service/Dockerfile # Putanja do tvog Dockerfile-a
-    container_name: accommodation-cont
+      dockerfile: accommodation-service/Dockerfile
+    deploy:
+      replicas: 3
     environment:
       - CONFIG_SERVER_URL=http://config-service:8888
       - SPRING_DATASOURCE_URL=jdbc:mysql://db-mysql:3306/finansije_rezervacije_db?createDatabaseIfNotExist=true
@@ -217,29 +278,16 @@ services:
         condition: service_healthy
       config-service:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - backend
 
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    networks:
-      - backend
-
-
-  # 9. MAINTENANCE SERVICE
+  # 15. MAINTENANCE SERVICE
   maintenance-service:
     build:
-      context: . # Tačka znači da gleda iz glavnog root foldera projekta
-      dockerfile: maintenance-service/Dockerfile # Putanja do tvog Dockerfile-a
+      context: .
+      dockerfile: maintenance-service/Dockerfile
     container_name: maintenance-cont
     ports:
       - "8085:8085"
@@ -261,6 +309,17 @@ services:
         condition: service_healthy
     networks:
       - backend
+
+  # 16. ADMINER - DB admin UI
+  adminer:
+    image: adminer
+    container_name: adminer-cont
+    ports:
+      - "8087:8080"
+    networks:
+      - frontend
+      - backend
+
 networks:
   frontend:
     driver: bridge

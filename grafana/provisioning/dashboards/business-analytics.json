@@ -1,0 +1,226 @@
+{
+  "id": null,
+  "uid": "eco-business-analytics",
+  "title": "Business Analytics - Accommodation & Maintenance",
+  "tags": ["mysql", "business", "accommodation", "maintenance"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {"from": "now-2y", "to": "now"},
+  "timepicker": {},
+  "templating": {"list": []},
+  "annotations": {"list": []},
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "Accommodation Service - Analitika",
+      "gridPos": {"h": 2, "w": 24, "x": 0, "y": 0},
+      "options": {
+        "content": "## Accommodation Service\nPodaci o smeštajnim jedinicama, sadržajima i sezonskim cenama.",
+        "mode": "markdown"
+      }
+    },
+    {
+      "id": 2,
+      "type": "piechart",
+      "title": "Distribucija smeštajnih jedinica po tipu",
+      "description": "Koliko ima kabina, apartmana i kuća",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 2},
+      "datasource": {"type": "mysql", "uid": "mysql-db"},
+      "targets": [
+        {
+          "datasource": {"type": "mysql", "uid": "mysql-db"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT unit_type AS 'Tip', COUNT(*) AS 'Broj' FROM units GROUP BY unit_type ORDER BY Broj DESC",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "pieType": "pie",
+        "displayLabels": ["name", "value", "percent"],
+        "reduceOptions": {
+          "values": true,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "tooltip": {"mode": "single"}
+      },
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}},
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "barchart",
+      "title": "Prosečna cena po noći po tipu smeštaja",
+      "description": "Uporedna analiza cena između kabina, apartmana i kuća",
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 2},
+      "datasource": {"type": "mysql", "uid": "mysql-db"},
+      "targets": [
+        {
+          "datasource": {"type": "mysql", "uid": "mysql-db"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT unit_type AS 'Tip smeštaja', ROUND(AVG(base_price_per_night), 2) AS 'Prosečna cena (EUR)' FROM units GROUP BY unit_type ORDER BY 'Prosečna cena (EUR)' DESC",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "xField": "Tip smeštaja",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": true,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "tooltip": {"mode": "single"},
+        "legend": {"showLegend": true, "displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}},
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "barchart",
+      "title": "Popularnost sadržaja (facilities)",
+      "description": "Koliko smeštajnih jedinica ima svaki sadržaj",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 2},
+      "datasource": {"type": "mysql", "uid": "mysql-db"},
+      "targets": [
+        {
+          "datasource": {"type": "mysql", "uid": "mysql-db"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT f.name AS 'Sadržaj', COUNT(uf.unit_id) AS 'Broj smeštaja', ROUND(f.extra_cost, 2) AS 'Dopunska naplata (EUR)' FROM facilities f LEFT JOIN unit_facilities uf ON f.id = uf.facility_id GROUP BY f.id, f.name, f.extra_cost ORDER BY COUNT(uf.unit_id) DESC",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "xField": "Sadržaj",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": true,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "tooltip": {"mode": "single"},
+        "legend": {"showLegend": true, "displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}},
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "text",
+      "title": "Maintenance Service - Analitika",
+      "gridPos": {"h": 2, "w": 24, "x": 0, "y": 10},
+      "options": {
+        "content": "## Maintenance Service\nPodaci o radnim nalozima, radnicima i zadacima održavanja.",
+        "mode": "markdown"
+      }
+    },
+    {
+      "id": 6,
+      "type": "piechart",
+      "title": "Radni nalozi po statusu",
+      "description": "Distribucija radnih naloga: PENDING, IN_PROGRESS, COMPLETED",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 12},
+      "datasource": {"type": "mysql", "uid": "mysql-db"},
+      "targets": [
+        {
+          "datasource": {"type": "mysql", "uid": "mysql-db"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT status AS 'Status', COUNT(*) AS 'Broj naloga' FROM work_orders GROUP BY status ORDER BY COUNT(*) DESC",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "pieType": "donut",
+        "displayLabels": ["name", "value", "percent"],
+        "reduceOptions": {
+          "values": true,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "tooltip": {"mode": "single"}
+      },
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}},
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "type": "barchart",
+      "title": "Radnici po specijalnosti",
+      "description": "Distribucija radnika prema njihovoj specijalnosti",
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 12},
+      "datasource": {"type": "mysql", "uid": "mysql-db"},
+      "targets": [
+        {
+          "datasource": {"type": "mysql", "uid": "mysql-db"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT specialty AS 'Specijalnost', COUNT(*) AS 'Broj radnika' FROM workers GROUP BY specialty ORDER BY COUNT(*) DESC",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "xField": "Specijalnost",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": true,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "tooltip": {"mode": "single"},
+        "legend": {"showLegend": false}
+      },
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}},
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "type": "barchart",
+      "title": "Procenjeno trajanje zadataka održavanja",
+      "description": "Koliko sati traje svaki tip zadatka održavanja",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 12},
+      "datasource": {"type": "mysql", "uid": "mysql-db"},
+      "targets": [
+        {
+          "datasource": {"type": "mysql", "uid": "mysql-db"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT task_name AS 'Zadatak', estimated_duration_hours AS 'Procenjeno trajanje (h)' FROM maintenance_tasks ORDER BY estimated_duration_hours DESC",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "xField": "Zadatak",
+        "orientation": "vertical",
+        "reduceOptions": {
+          "values": true,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "tooltip": {"mode": "single"},
+        "legend": {"showLegend": false}
+      },
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}},
+        "overrides": []
+      }
+    }
+  ]
+}

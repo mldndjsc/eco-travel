@@ -51,7 +51,11 @@
             <artifactId>opentelemetry-exporter-zipkin</artifactId>
         </dependency>
 
-
+        <!-- Eureka client - enables lb:// load balancing in routes -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.projectlombok</groupId>
