@@ -8,9 +8,12 @@ import com.ecotravel.vodici.dto.response.LanguageResponseDTO;
 import com.ecotravel.vodici.entity.*;
 import com.ecotravel.vodici.exception.BusinessException;
 import com.ecotravel.vodici.exception.ResourceNotFoundException;
+import com.ecotravel.vodici.messaging.publisher.GuideEventPublisher;
 import com.ecotravel.vodici.repository.CertificationRepository;
 import com.ecotravel.vodici.repository.GuideRepository;
 import lombok.RequiredArgsConstructor;
+import org.raflab.shared.events.GuideCreatedEvent;
+import org.raflab.shared.events.GuideDeletedEvent;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +29,7 @@ public class GuideService {
     private final GuideRepository guideRepository;
     private final CertificationRepository certificationRepository;
     private final LanguageService languageService;
+    private final GuideEventPublisher eventPublisher;
 
     @Transactional
     public GuideResponseDTO create(GuideRequestDTO dto) {
@@ -34,7 +38,9 @@ public class GuideService {
         guide.setLastName(dto.getLastName());
         guide.setBio(dto.getBio());
         guide.setRating(dto.getRating());
-        return toDTO(guideRepository.save(guide));
+        GuideResponseDTO response = toDTO(guideRepository.save(guide));
+        eventPublisher.publishGuideCreated(new GuideCreatedEvent(response.getId(), response.getFirstName(), response.getLastName()));
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -60,10 +66,11 @@ public class GuideService {
 
     @Transactional
     public void delete(Long id) {
-        if (!guideRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Vodic sa ID " + id + " nije pronadjen");
-        }
+        Guide guide = getOrThrow(id);
+        String firstName = guide.getFirstName();
+        String lastName = guide.getLastName();
         guideRepository.deleteById(id);
+        eventPublisher.publishGuideDeleted(new GuideDeletedEvent(id, firstName, lastName));
     }
 
     @Transactional
