@@ -1,0 +1,226 @@
+{
+  "id": null,
+  "uid": "booking-finance-analytics",
+  "title": "Business Analytics - Rezervacije & Finansije",
+  "tags": ["mysql", "business", "rezervacije", "finansije"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {"from": "now-2y", "to": "now"},
+  "timepicker": {},
+  "templating": {"list": []},
+  "annotations": {"list": []},
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "Rezervacije Service - Analitika",
+      "gridPos": {"h": 2, "w": 24, "x": 0, "y": 0},
+      "options": {
+        "content": "## Rezervacije Service\nPodaci o rezervacijama, gostima, politikama otkazivanja i dodacima.",
+        "mode": "markdown"
+      }
+    },
+    {
+      "id": 2,
+      "type": "piechart",
+      "title": "Rezervacije po statusu",
+      "description": "Distribucija rezervacija: CONFIRMED, PENDING, CANCELLED, COMPLETED",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 2},
+      "datasource": {"type": "mysql", "uid": "mysql-db"},
+      "targets": [
+        {
+          "datasource": {"type": "mysql", "uid": "mysql-db"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT status AS 'Status', COUNT(*) AS 'Broj' FROM bookings GROUP BY status ORDER BY COUNT(*) DESC",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "pieType": "donut",
+        "displayLabels": ["name", "value", "percent"],
+        "reduceOptions": {
+          "values": true,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "tooltip": {"mode": "single"}
+      },
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}},
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "barchart",
+      "title": "Prihod po politici otkazivanja",
+      "description": "Ukupan prihod grupisano po tipu politike otkazivanja",
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 2},
+      "datasource": {"type": "mysql", "uid": "mysql-db"},
+      "targets": [
+        {
+          "datasource": {"type": "mysql", "uid": "mysql-db"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT cp.policy_name AS 'Politika otkazivanja', ROUND(SUM(b.total_price), 2) AS 'Ukupan prihod (EUR)' FROM bookings b JOIN cancellation_policies cp ON b.policy_id = cp.id GROUP BY cp.policy_name ORDER BY SUM(b.total_price) DESC",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "xField": "Politika otkazivanja",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": true,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "tooltip": {"mode": "single"},
+        "legend": {"showLegend": true, "displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}},
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "barchart",
+      "title": "Top dodaci uz rezervacije (add-ons)",
+      "description": "Koji dodaci (breakfast, parking...) su najcesce narucivani",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 2},
+      "datasource": {"type": "mysql", "uid": "mysql-db"},
+      "targets": [
+        {
+          "datasource": {"type": "mysql", "uid": "mysql-db"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT service_name AS 'Usluga', COUNT(*) AS 'Broj narucivanja', ROUND(SUM(price), 2) AS 'Ukupan prihod (EUR)' FROM add_on_items GROUP BY service_name ORDER BY COUNT(*) DESC",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "xField": "Usluga",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": true,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "tooltip": {"mode": "single"},
+        "legend": {"showLegend": false}
+      },
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}},
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "text",
+      "title": "Finansije Service - Analitika",
+      "gridPos": {"h": 2, "w": 24, "x": 0, "y": 10},
+      "options": {
+        "content": "## Finansije Service\nPodaci o fakturama, transakcijama, nacinu placanja i poreznim stopama.",
+        "mode": "markdown"
+      }
+    },
+    {
+      "id": 6,
+      "type": "piechart",
+      "title": "Fakture po statusu placanja",
+      "description": "Distribucija faktura: PAID, UNPAID, PARTIALLY_PAID, CANCELLED",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 12},
+      "datasource": {"type": "mysql", "uid": "mysql-db"},
+      "targets": [
+        {
+          "datasource": {"type": "mysql", "uid": "mysql-db"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT status AS 'Status', COUNT(*) AS 'Broj faktura' FROM invoices GROUP BY status ORDER BY COUNT(*) DESC",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "pieType": "pie",
+        "displayLabels": ["name", "value", "percent"],
+        "reduceOptions": {
+          "values": true,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "tooltip": {"mode": "single"}
+      },
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}},
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "type": "barchart",
+      "title": "Prihod po nacinu placanja",
+      "description": "Ukupan iznos transakcija grupisano po metodi placanja",
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 12},
+      "datasource": {"type": "mysql", "uid": "mysql-db"},
+      "targets": [
+        {
+          "datasource": {"type": "mysql", "uid": "mysql-db"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT pm.method_name AS 'Nacin placanja', ROUND(SUM(t.amount), 2) AS 'Ukupan prihod (EUR)' FROM transactions t JOIN payment_methods pm ON t.payment_method_id = pm.id GROUP BY pm.method_name ORDER BY SUM(t.amount) DESC",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "xField": "Nacin placanja",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": true,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "tooltip": {"mode": "single"},
+        "legend": {"showLegend": false}
+      },
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}},
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "type": "barchart",
+      "title": "Prihod po poreskoj stopi",
+      "description": "Uporedni prikaz ukupnog prihoda po tipu poreza (PDV, boravisna taksa...)",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 12},
+      "datasource": {"type": "mysql", "uid": "mysql-db"},
+      "targets": [
+        {
+          "datasource": {"type": "mysql", "uid": "mysql-db"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT tr.tax_name AS 'Porez', ROUND(tr.percentage, 2) AS 'Stopa (%)', COUNT(i.id) AS 'Broj faktura', ROUND(SUM(i.total_amount), 2) AS 'Ukupan iznos (EUR)' FROM invoices i JOIN tax_rates tr ON i.tax_rates_id = tr.id GROUP BY tr.id, tr.tax_name, tr.percentage ORDER BY SUM(i.total_amount) DESC",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "xField": "Porez",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": true,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "tooltip": {"mode": "single"},
+        "legend": {"showLegend": false}
+      },
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}},
+        "overrides": []
+      }
+    }
+  ]
+}
