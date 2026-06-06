@@ -31,9 +31,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import org.raflab.shared.events.TransactionCreatedEvent;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TransactionsService {
@@ -55,6 +58,11 @@ public class TransactionsService {
 
     @Transactional
     public void save(TransactionsRequestDto transactionsRequestDto){
+        log.info("Kreiranje transakcije: faktura={}, iznos={}, metoda={}",
+                transactionsRequestDto.getInvoiceRequestDto().getInvoiceNumber(),
+                transactionsRequestDto.getAmount(),
+                transactionsRequestDto.getPaymentMethodsRequestDto().getMethodName());
+
         Invoices invoice = resolveInvoice(transactionsRequestDto);
         PaymentMethods paymentMethod = resolvePaymentMethod(transactionsRequestDto);
 
@@ -65,6 +73,11 @@ public class TransactionsService {
         transaction.setPaymentMethod(paymentMethod);
 
         transaction = transactionsRepository.save(transaction);
+        log.info("Transakcija kreirana: transactionId={}, faktura={}, iznos={}EUR, metoda={}",
+                transaction.getId(),
+                invoice.getInvoiceNumber(),
+                transaction.getAmount(),
+                paymentMethod.getMethodName());
 
         TransactionCreatedEvent event = new TransactionCreatedEvent(
                 transaction.getId(),
@@ -168,27 +181,35 @@ public class TransactionsService {
         if (totalPaidSoFar >= invoice.getTotal_amount()) {
             invoice.setStatus("PAID");
             invoicesRepository.save(invoice);
+            log.info("Faktura u potpunosti placena: faktura={}, bookingId={}, ukupno={}EUR",
+                    invoice.getInvoiceNumber(), invoice.getBookingId(), invoice.getTotal_amount());
 
             bookingClient.updateBookingStatus(invoice.getBookingId(), "CONFIRMED");
+            log.info("Rezervacija potvrdjene zbog placanja: bookingId={}", invoice.getBookingId());
 
         } else {
             invoice.setStatus("PARTIALLY_PAID");
             invoicesRepository.save(invoice);
+            log.info("Djelimicno placanje: faktura={}, placeno={}EUR od ukupno={}EUR",
+                    invoice.getInvoiceNumber(), totalPaidSoFar, invoice.getTotal_amount());
         }
     }
 
     public void fallbackProcessPayment(TransactionsRequestDto dto, Throwable t) {
         if (t instanceof CallNotPermittedException) {
-            System.err.println("CRITICAL (Circuit Breaker OPEN): Sistem je pod zaštitom. Uplata " + dto.getAmount() + " je sačuvana lokalno, ali Bookings servis nije obavešten. Potrebna je naknadna (asinhrona) sinhronizacija.");
+            log.error("Circuit Breaker OPEN — uplata evidentirana ali Bookings servis nije obavijesten: iznos={}EUR, faktura={}",
+                    dto.getAmount(), dto.getInvoiceRequestDto().getInvoiceNumber());
             return;
         }
 
         if (t instanceof FeignException.NotFound) {
-            System.err.println(" ERROR (Nepostojeća rezervacija): Uplata je evidentirana, ali rezervacija ne postoji u Bookings servisu! Potrebna je intervencija administratora za eventualni povraćaj novca.");
+            log.error("Uplata evidentirana ali rezervacija ne postoji u Bookings servisu — potrebna intervencija: bookingId={}",
+                    dto.getInvoiceRequestDto().getBookingId());
             return;
         }
 
-        System.err.println(" UPOZORENJE (Mrežni pad): Uplata je uspešno primljena");
+        log.warn("Mrezni pad pri obradi placanja — uplata primljena ali sinhronizacija nije uspjela: iznos={}EUR",
+                dto.getAmount());
     }
 
     public void fallbackProcessPaymentRateLimit(TransactionsRequestDto dto, Throwable t) {

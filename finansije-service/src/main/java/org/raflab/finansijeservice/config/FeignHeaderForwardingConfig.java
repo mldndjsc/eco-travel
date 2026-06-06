@@ -16,7 +16,9 @@ public class FeignHeaderForwardingConfig {
             "X-API-KEY",
             "X-User-Role",
             "X-Authenticated-User",
-            "X-Trace-Id"
+            "X-Trace-Id",
+            "traceparent",
+            "tracestate"
     );
 
     @Bean

@@ -8,8 +8,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @FeignClient(
-        name = "booking-client",
-        url = "${rezervacije.service.url}",
+        name = "rezervacije-service",
         configuration = BookingFeignConfig.class
 )
 public interface BookingClient {

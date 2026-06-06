@@ -15,6 +15,7 @@ import java.util.Optional;
 public class RequestContextMdcFilter extends OncePerRequestFilter {
 
     private static final String TRACE_ID_HEADER = "X-Trace-Id";
+    private static final String W3C_TRACEPARENT_HEADER = "traceparent";
     private static final String AUTHENTICATED_USER_HEADER = "X-Authenticated-User";
     private static final String USER_ROLE_HEADER = "X-User-Role";
 
@@ -22,9 +23,7 @@ public class RequestContextMdcFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        String traceId = Optional.ofNullable(request.getHeader(TRACE_ID_HEADER))
-                .filter(value -> !value.isBlank())
-                .orElse("N/A");
+        String traceId = resolveTraceId(request);
         String authenticatedUser = Optional.ofNullable(request.getHeader(AUTHENTICATED_USER_HEADER))
                 .filter(value -> !value.isBlank())
                 .orElse("anonymous");
@@ -44,5 +43,22 @@ public class RequestContextMdcFilter extends OncePerRequestFilter {
         } finally {
             MDC.clear();
         }
+    }
+
+    private String resolveTraceId(HttpServletRequest request) {
+        return Optional.ofNullable(extractTraceIdFromTraceparent(request.getHeader(W3C_TRACEPARENT_HEADER)))
+                .or(() -> Optional.ofNullable(request.getHeader(TRACE_ID_HEADER)).filter(value -> !value.isBlank()))
+                .orElse("N/A");
+    }
+
+    private String extractTraceIdFromTraceparent(String traceparent) {
+        if (traceparent == null || traceparent.isBlank()) {
+            return null;
+        }
+        String[] parts = traceparent.split("-");
+        if (parts.length >= 2 && parts[1].matches("[0-9a-fA-F]{32}")) {
+            return parts[1];
+        }
+        return null;
     }
 }
