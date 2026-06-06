@@ -39,8 +39,8 @@ docker network prune -f &>/dev/null
 ok "Docker mreze ociscene."
 
 # ─── KORAK 3: Build i pokretanje servisa ──────────────────
-step "3/5" "Pokretanje svih servisa (3 instance accommodation-service)..."
-docker compose up -d --build
+step "3/5" "Pokretanje svih servisa (3 instance accommodation, rezervacije i finansije)..."
+docker compose up -d --build --scale accommodation-service=3 --scale rezervacije-service=3 --scale finansije-service=3
 ok "Servisi pokrenuti."
 
 # ─── KORAK 4: Cekanje na infrastrukturu ───────────────────
@@ -73,13 +73,15 @@ check_service "Gateway         " "http://localhost:8080/actuator/health"
 check_service "Maintenance     " "http://localhost:8085/actuator/health"
 
 echo ""
-echo "  Instance accommodation-service:"
-ACC_COUNT=$(docker compose ps accommodation-service 2>/dev/null | grep -c "Up" || echo 0)
-if [ "$ACC_COUNT" -ge 3 ]; then
-    ok "accommodation-service: $ACC_COUNT instance aktivno (round-robin load balancing)"
-else
-    warn "accommodation-service: $ACC_COUNT instanca pokrenuta (ocekivano 3)"
-fi
+echo "  Instance skaliranih servisa:"
+for SERVICE_NAME in accommodation-service rezervacije-service finansije-service; do
+    SERVICE_COUNT=$(docker compose ps "$SERVICE_NAME" 2>/dev/null | grep -c "Up" || echo 0)
+    if [ "$SERVICE_COUNT" -ge 3 ]; then
+        ok "$SERVICE_NAME: $SERVICE_COUNT instance aktivno"
+    else
+        warn "$SERVICE_NAME: $SERVICE_COUNT instanca pokrenuta (ocekivano 3)"
+    fi
+done
 
 echo ""
 echo "  Zipkin servisi:"

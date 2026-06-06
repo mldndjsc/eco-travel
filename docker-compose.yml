@@ -158,7 +158,8 @@ services:
     build:
       context: .
       dockerfile: finansije-service/Dockerfile
-    container_name: finansije-cont
+    deploy:
+      replicas: 3
     environment:
       - CONFIG_SERVER_URL=http://config-service:8888
       - REZERVACIJE_SERVICE_URL=http://rezervacije-service:8082
@@ -186,6 +187,8 @@ services:
     build:
       context: .
       dockerfile: rezervacije-service/Dockerfile
+    deploy:
+      replicas: 3
     environment:
       - CONFIG_SERVER_URL=http://config-service:8888
       - FINANSIJE_SERVICE_URL=http://finansije-service:8083

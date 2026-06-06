@@ -21,11 +21,14 @@ import org.springframework.web.server.ResponseStatusException;
 import org.raflab.shared.events.BookingCreatedMaintenanceEvent;
 import org.raflab.shared.events.MaintenanceWorkOrderCreatedFeedbackEvent;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
 public class BookingsService implements BookingPublisher {
 
@@ -66,6 +69,13 @@ public class BookingsService implements BookingPublisher {
     }
 
     public void save(BookingsRequestDto bookingsRequestDto) {
+        log.info("Kreiranje nove rezervacije: gost={}, unitId={}, od={}, do={}, cijena={}",
+                bookingsRequestDto.getGuestsRequestDto().getEmail(),
+                bookingsRequestDto.getUnitId(),
+                bookingsRequestDto.getStartDate(),
+                bookingsRequestDto.getEndDate(),
+                bookingsRequestDto.getTotalPrice());
+
         validateBookingSave(bookingsRequestDto);
 
         Bookings bookings = BookingsConverter.toBooking(bookingsRequestDto);
@@ -76,6 +86,8 @@ public class BookingsService implements BookingPublisher {
         if (cancellationPolicies.isPresent()) {
             bookings.setPolicy(cancellationPolicies.get());
         } else {
+            log.info("Politika otkazivanja '{}' ne postoji — kreiranje nove.",
+                    bookingsRequestDto.getPolicyRequestDto().getPolicyName());
             CancellationPolicies newPolicy =
                     CancellationPoliciesConverter.toCancellationPolicies(bookingsRequestDto.getPolicyRequestDto());
             cancellationPoliciesRepository.save(newPolicy);
@@ -85,12 +97,15 @@ public class BookingsService implements BookingPublisher {
         if (guest.isPresent()) {
             bookings.setGuest(guest.get());
         } else {
+            log.info("Gost '{}' ne postoji u bazi — kreiranje novog gosta.",
+                    bookingsRequestDto.getGuestsRequestDto().getEmail());
             Guests newGuest = GuestsConverter.toGuests(bookingsRequestDto.getGuestsRequestDto());
             guestsRepository.save(newGuest);
             bookings.setGuest(newGuest);
         }
 
         Bookings savedBooking = bookingsRepository.save(bookings);
+        log.info("Rezervacija uspjesno kreirana: bookingId={}, status={}", savedBooking.getId(), savedBooking.getStatus());
 
         bookingMaintenancePublisher.publishBookingCreated(
                 new BookingCreatedMaintenanceEvent(
@@ -125,18 +140,30 @@ public class BookingsService implements BookingPublisher {
     }
 
     public BookingsResponseDto findById(Long id) {
+        log.info("Trazenje rezervacije: bookingId={}", id);
         Bookings booking = bookingsRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking sa ID " + id + " ne postoji."));
+                .orElseThrow(() -> {
+                    log.error("Rezervacija nije pronadjena: bookingId={}", id);
+                    return new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking sa ID " + id + " ne postoji.");
+                });
+        log.info("Rezervacija pronadjena: bookingId={}, status={}, gost={}",
+                booking.getId(), booking.getStatus(), booking.getGuest().getEmail());
         return BookingsConverter.toBookingResponseDto(booking);
     }
 
     public void deleteById(Long id) {
+        log.info("Brisanje rezervacije: bookingId={}", id);
         bookingsRepository.deleteById(id);
+        log.info("Rezervacija obrisana: bookingId={}", id);
     }
 
     public Double cancelBookingAndRefund(Long id) {
+        log.info("Otkazivanje rezervacije sa povracajem: bookingId={}", id);
         Bookings booking = bookingsRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking sa ID " + id + " ne postoji."));
+                .orElseThrow(() -> {
+                    log.error("Rezervacija za otkazivanje nije pronadjena: bookingId={}", id);
+                    return new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking sa ID " + id + " ne postoji.");
+                });
 
         CancellationPolicies policy = booking.getPolicy();
         int refundPercentage = policy.getRefundPercentage();
@@ -145,15 +172,20 @@ public class BookingsService implements BookingPublisher {
         booking.setStatus("CANCELLED");
         bookingsRepository.save(booking);
 
+        log.info("Rezervacija otkazana: bookingId={}, politika={}, povracaj={}%, iznos={}EUR",
+                id, policy.getPolicyName(), refundPercentage, refundAmount);
         return refundAmount;
     }
 
     public void updateBookingStatus(Long id, String status) {
         if (bookingsRepository.existsById(id)) {
             Bookings booking = bookingsRepository.findById(id).get();
+            String oldStatus = booking.getStatus();
             booking.setStatus(status);
             bookingsRepository.save(booking);
+            log.info("Status rezervacije promijenjen: bookingId={}, {} -> {}", id, oldStatus, status);
         } else {
+            log.error("Azuriranje statusa nije uspjelo — rezervacija ne postoji: bookingId={}", id);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking sa ID " + id + " ne postoji.");
         }
     }
@@ -166,18 +198,24 @@ public class BookingsService implements BookingPublisher {
 
             booking.setStatus(newStatus);
             bookingsRepository.save(booking);
+            log.info("Placanje evidentirano za rezervaciju: bookingId={}, {} -> {}", id, oldStatus, newStatus);
             notifyObservers(id, oldStatus, newStatus);
             return;
         }
 
+        log.error("Evidencija placanja nije uspjela — rezervacija ne postoji: bookingId={}", id);
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking sa ID " + id + " ne postoji.");
     }
 
     public void cancelBookingDueToNonPayment(Long id) {
         Bookings booking = bookingsRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking sa ID " + id + " ne postoji."));
+                .orElseThrow(() -> {
+                    log.error("Otkazivanje zbog neplacanja nije uspjelo — rezervacija ne postoji: bookingId={}", id);
+                    return new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking sa ID " + id + " ne postoji.");
+                });
 
         if ("CONFIRMED".equals(booking.getStatus())) {
+            log.error("Pokusaj otkazivanja vec potvrdjene rezervacije zbog neplacanja: bookingId={}", id);
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Potvrdjena rezervacija ne moze biti otkazana kao neplacena.");
         }
 
@@ -185,13 +223,17 @@ public class BookingsService implements BookingPublisher {
         booking.setStatus("CANCELLED");
         bookingsRepository.save(booking);
 
+        log.warn("Rezervacija otkazana zbog neplacanja: bookingId={}, prethodni status={}", id, oldStatus);
         notifyObservers(id, oldStatus, "CANCELLED");
     }
 
     public void recordMaintenanceWorkOrderCreated(MaintenanceWorkOrderCreatedFeedbackEvent event) {
         Bookings booking = bookingsRepository.findById(event.getBookingId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Booking sa ID " + event.getBookingId() + " ne postoji."));
+                .orElseThrow(() -> {
+                    log.error("RabbitMQ feedback — rezervacija ne postoji: bookingId={}", event.getBookingId());
+                    return new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Booking sa ID " + event.getBookingId() + " ne postoji.");
+                });
 
         bookingStatusLogsService.logStatusChange(
                 booking.getId(),
@@ -199,9 +241,8 @@ public class BookingsService implements BookingPublisher {
                 "MAINTENANCE_WORK_ORDER_CREATED"
         );
 
-        System.out.println("RABBITMQ FEEDBACK APPLIED: Booking " + booking.getId()
-                + " je dobio maintenance potvrdu za workOrderId=" + event.getWorkOrderId()
-                + ", scheduledFor=" + event.getScheduledFor());
+        log.info("RabbitMQ feedback primljen: bookingId={}, workOrderId={}, scheduledFor={}",
+                booking.getId(), event.getWorkOrderId(), event.getScheduledFor());
     }
 
     public List<BookingsResponseDto> searchBookingsByGuestAndStatus(String searchTerm, String status) {
@@ -211,24 +252,31 @@ public class BookingsService implements BookingPublisher {
 
     private void validateBookingSave(BookingsRequestDto bookingsRequestDto) {
         if (bookingsRequestDto.getGuestsRequestDto() == null) {
+            log.error("Validacija rezervacije pala: nedostaje gost");
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ne postoji gost za dati booking.");
         }
         if (bookingsRequestDto.getStartDate() == null) {
+            log.error("Validacija rezervacije pala: nedostaje pocetni datum");
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ne postoji pocetni datum.");
         }
         if (bookingsRequestDto.getEndDate() == null) {
+            log.error("Validacija rezervacije pala: nedostaje krajnji datum");
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ne postoji krajnji datum.");
         }
         if (bookingsRequestDto.getStatus() == null) {
+            log.error("Validacija rezervacije pala: nedostaje status");
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nema statusa rezervacije.");
         }
         if (bookingsRequestDto.getUnitId() == null) {
+            log.error("Validacija rezervacije pala: nedostaje unitId");
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nema unit-a za koji je rezervacija.");
         }
         if (bookingsRequestDto.getPolicyRequestDto() == null) {
+            log.error("Validacija rezervacije pala: nedostaje politika otkazivanja");
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Dodajte politiku otkazivanja.");
         }
         if (bookingsRequestDto.getTotalPrice() == null || bookingsRequestDto.getTotalPrice() <= 0) {
+            log.error("Validacija rezervacije pala: nevalidan ukupan iznos={}", bookingsRequestDto.getTotalPrice());
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ukupan iznos za rezervaciju nije validan.");
         }
     }

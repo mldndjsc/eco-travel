@@ -21,9 +21,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class InvoicesService {
@@ -39,6 +42,10 @@ public class InvoicesService {
     @CircuitBreaker(name = "bookingServiceCB", fallbackMethod = "fallbackSaveInvoice")
     @RateLimiter(name = "rezervacijeServiceRateLimit", fallbackMethod = "fallbackSaveInvoiceRateLimit")
     public void save(InvoicesRequestDto invoicesRequestDto) {
+        log.info("Kreiranje fakture: broj={}, bookingId={}, subtotal={}",
+                invoicesRequestDto.getInvoiceNumber(),
+                invoicesRequestDto.getBookingId(),
+                invoicesRequestDto.getSubtotal());
 
         validateNewInvoiceData(invoicesRequestDto);
 
@@ -49,6 +56,7 @@ public class InvoicesService {
         if (taxRates.isPresent()) {
             invoices.setTaxRates(taxRates.get());
         } else {
+            log.info("Poreska stopa '{}' ne postoji — kreiranje nove.", invoicesRequestDto.getTaxRatesRequest().getTaxName());
             TaxRates newTaxRates = TaxRatesConverter.toTaxRates(invoicesRequestDto.getTaxRatesRequest());
             taxRatesRepository.save(newTaxRates);
             invoices.setTaxRates(newTaxRates);
@@ -61,6 +69,8 @@ public class InvoicesService {
         bookingClient.findBookingById(invoicesRequestDto.getBookingId());
 
         invoicesRepository.save(invoices);
+        log.info("Faktura uspjesno kreirana: broj={}, ukupno={}, status={}",
+                invoices.getInvoiceNumber(), invoices.getTotal_amount(), invoices.getStatus());
     }
 
     public void updateById(InvoicesRequestDto invoicesRequestDto, Long id) {
@@ -92,36 +102,49 @@ public class InvoicesService {
     }
 
     public InvoicesResponseDto findById(Long id) {
-        return InvoicesConverter.toInvoicesResponse(invoicesRepository.findById(id).get());
+        log.info("Trazenje fakture: invoiceId={}", id);
+        Invoices invoice = invoicesRepository.findById(id).orElseThrow(() -> {
+            log.error("Faktura nije pronadjena: invoiceId={}", id);
+            return new ResponseStatusException(HttpStatus.NOT_FOUND, "Faktura sa ID " + id + " ne postoji.");
+        });
+        return InvoicesConverter.toInvoicesResponse(invoice);
     }
 
     public void deleteById(Long id) {
+        log.info("Brisanje fakture: invoiceId={}", id);
         invoicesRepository.deleteById(id);
+        log.info("Faktura obrisana: invoiceId={}", id);
     }
 
     public void markReservationFeedbackReceived(String invoiceNumber) {
         Invoices invoice = invoicesRepository.findInvoicesByInvoiceNumber(invoiceNumber);
         if (invoice == null) {
+            log.error("RabbitMQ feedback — faktura nije pronadjena: broj={}", invoiceNumber);
             throw new ResponseStatusException(HttpStatus.NOT_FOUND,
                     "Faktura sa brojem " + invoiceNumber + " ne postoji u finansije servisu.");
         }
 
         invoice.setStatus("RESERVATION_PAYMENT_RECORDED");
         invoicesRepository.save(invoice);
-        System.out.println("RABBITMQ FEEDBACK APPLIED: Faktura " + invoiceNumber
-                + " je azurirana na status RESERVATION_PAYMENT_RECORDED.");
+        log.info("RabbitMQ feedback primljen: faktura={} azurirana na RESERVATION_PAYMENT_RECORDED", invoiceNumber);
     }
 
     @CircuitBreaker(name = "bookingServiceCB", fallbackMethod = "fallbackCancelUnpaidInvoice")
     @RateLimiter(name = "rezervacijeServiceRateLimit", fallbackMethod = "fallbackCancelUnpaidInvoiceRateLimit")
     public void cancelUnpaidInvoice(Long invoiceId) {
+        log.warn("Storniranje neplacene fakture: invoiceId={}", invoiceId);
         Invoices invoice = invoicesRepository.findById(invoiceId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Faktura sa ID " + invoiceId + " ne postoji u bazi."));
+                .orElseThrow(() -> {
+                    log.error("Storniranje nije uspjelo — faktura ne postoji: invoiceId={}", invoiceId);
+                    return new ResponseStatusException(HttpStatus.NOT_FOUND, "Faktura sa ID " + invoiceId + " ne postoji u bazi.");
+                });
 
         validateInvoiceCancellation(invoice);
 
         invoice.setStatus("CANCELLED");
         invoicesRepository.save(invoice);
+        log.warn("Faktura stornirana: invoiceId={}, broj={}, bookingId={}",
+                invoiceId, invoice.getInvoiceNumber(), invoice.getBookingId());
 
         bookingClient.cancelBookingDueToNonPayment(invoice.getBookingId());
     }
@@ -132,6 +155,7 @@ public class InvoicesService {
         }
 
         if (t instanceof CallNotPermittedException) {
+            log.error("Circuit Breaker OPEN — kreiranje fakture blokirano: bookingId={}", dto.getBookingId());
             throw new ResponseStatusException(
                     HttpStatus.SERVICE_UNAVAILABLE,
                     "Sistem je preopterecen. Zastitni osigurac je aktivan. Faktura nije sacuvana, pokusajte ponovo kasnije."
@@ -139,12 +163,14 @@ public class InvoicesService {
         }
 
         if (t instanceof FeignException.NotFound) {
+            log.error("Kreiranje fakture palo — rezervacija ne postoji: bookingId={}", dto.getBookingId());
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
                     "Nije moguce kreirati fakturu. Rezervacija sa ID " + dto.getBookingId() + " ne postoji."
             );
         }
 
+        log.error("Komunikacija sa Bookings servisom pala pri kreiranju fakture: {}", t.getMessage());
         throw new ResponseStatusException(
                 HttpStatus.SERVICE_UNAVAILABLE,
                 "Greska u komunikaciji: mreza ka Bookings servisu je trenutno nedostupna. Detalji: " + t.getMessage()

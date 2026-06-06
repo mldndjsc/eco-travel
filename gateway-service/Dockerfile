@@ -16,7 +16,7 @@ COPY src ./src
 RUN mvn clean package -DskipTests
 
 # Stage 2: Runtime faza (Minimalni JRE)
-FROM container-registry.oracle.com/java/openjdk:24-oraclelinux9
+FROM eclipse-temurin:21-jre
 WORKDIR /app
 
 # Kopiramo samo gotov .jar iz prve faze
