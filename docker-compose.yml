@@ -27,6 +27,7 @@ services:
     environment:
       MYSQL_DATABASE: finansije_rezervacije_db
       MYSQL_ROOT_PASSWORD: root
+    command: --max_connections=500
     ports:
       - "3307:3306"
     volumes:
@@ -158,7 +159,8 @@ services:
     build:
       context: .
       dockerfile: finansije-service/Dockerfile
-    container_name: finansije-cont
+    deploy:
+      replicas: 3
     environment:
       - CONFIG_SERVER_URL=http://config-service:8888
       - REZERVACIJE_SERVICE_URL=http://rezervacije-service:8082
@@ -186,6 +188,8 @@ services:
     build:
       context: .
       dockerfile: rezervacije-service/Dockerfile
+    deploy:
+      replicas: 3
     environment:
       - CONFIG_SERVER_URL=http://config-service:8888
       - FINANSIJE_SERVICE_URL=http://finansije-service:8083
@@ -209,12 +213,13 @@ services:
     networks:
       - backend
 
-  # 12. AVANTURE SERVICE
+  # 12. AVANTURE SERVICE - skaliran na 3 instance za demonstraciju load balancinga
   avanture-service:
     build:
       context: .
       dockerfile: avanture-service/Dockerfile
-    container_name: avanture-cont
+    deploy:
+      replicas: 3
     environment:
       - CONFIG_SERVER_URL=http://config-service:8888
       - SPRING_DATASOURCE_URL=jdbc:mysql://db-mysql:3306/ekoturizam_db?createDatabaseIfNotExist=true
@@ -239,12 +244,13 @@ services:
     networks:
       - backend
 
-  # 13. VODICI SERVICE
+  # 13. VODICI SERVICE - skaliran na 3 instance za demonstraciju load balancinga
   vodici-service:
     build:
       context: .
       dockerfile: vodici-service/Dockerfile
-    container_name: vodici-cont
+    deploy:
+      replicas: 3
     environment:
       - CONFIG_SERVER_URL=http://config-service:8888
       - SPRING_DATASOURCE_URL=jdbc:mysql://db-mysql:3306/ekoturizam_db?createDatabaseIfNotExist=true

@@ -8,7 +8,6 @@ import java.util.List;
 
 @FeignClient(
         name = "finansije-service",
-        url = "${finansije.service.url}",
         configuration = FinansijeFeignConfig.class
 )
 public interface FinansijeClient {

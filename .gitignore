@@ -28,3 +28,4 @@ logs/
 
 # Dependencies
 node_modules/
+.m2/

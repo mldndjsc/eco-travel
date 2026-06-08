@@ -1,0 +1,226 @@
+{
+  "id": null,
+  "uid": "eco-avanture-vodici-analytics",
+  "title": "Business Analytics - Avanture & Vodici",
+  "tags": ["mysql", "business", "avanture", "vodici"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {"from": "now-2y", "to": "now"},
+  "timepicker": {},
+  "templating": {"list": []},
+  "annotations": {"list": []},
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "Avanture Service - Analitika",
+      "gridPos": {"h": 2, "w": 24, "x": 0, "y": 0},
+      "options": {
+        "content": "## Avanture Service\nPodaci o avanturama, kategorijama, recenzijama i opremi.",
+        "mode": "markdown"
+      }
+    },
+    {
+      "id": 2,
+      "type": "piechart",
+      "title": "Avanture po težini (difficulty)",
+      "description": "Distribucija avantura po nivou težine",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 2},
+      "datasource": {"type": "mysql", "uid": "mysql-db"},
+      "targets": [
+        {
+          "datasource": {"type": "mysql", "uid": "mysql-db"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT difficulty AS 'Tezina', COUNT(*) AS 'Broj avantura' FROM ekoturizam_db.adventure GROUP BY difficulty ORDER BY COUNT(*) DESC",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "pieType": "pie",
+        "displayLabels": ["name", "value", "percent"],
+        "reduceOptions": {
+          "values": true,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "tooltip": {"mode": "single"}
+      },
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}},
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "barchart",
+      "title": "Prosečna ocena avantura",
+      "description": "Prikaz prosečnih ocena po avanturi na osnovu recenzija",
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 2},
+      "datasource": {"type": "mysql", "uid": "mysql-db"},
+      "targets": [
+        {
+          "datasource": {"type": "mysql", "uid": "mysql-db"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT a.title AS 'Avantura', COALESCE(ROUND(AVG(r.rating), 2), 0) AS 'Prosecna ocena', COUNT(r.id) AS 'Broj recenzija' FROM ekoturizam_db.adventure a LEFT JOIN ekoturizam_db.adventure_review r ON a.id = r.adventure_id GROUP BY a.id, a.title ORDER BY COALESCE(ROUND(AVG(r.rating), 2), 0) DESC",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "xField": "Avantura",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": true,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "tooltip": {"mode": "single"},
+        "legend": {"showLegend": true, "displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}},
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "barchart",
+      "title": "Obavezna oprema po avanturi",
+      "description": "Broj obaveznih i opcionih komada opreme po avanturi",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 2},
+      "datasource": {"type": "mysql", "uid": "mysql-db"},
+      "targets": [
+        {
+          "datasource": {"type": "mysql", "uid": "mysql-db"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT a.title AS 'Avantura', SUM(CASE WHEN g.is_mandatory = true THEN 1 ELSE 0 END) AS 'Obavezna', SUM(CASE WHEN g.is_mandatory = false THEN 1 ELSE 0 END) AS 'Opciona' FROM ekoturizam_db.adventure a LEFT JOIN ekoturizam_db.gear_requirement g ON a.id = g.adventure_id GROUP BY a.id, a.title ORDER BY a.title",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "xField": "Avantura",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": true,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "tooltip": {"mode": "single"},
+        "legend": {"showLegend": true, "displayMode": "list", "placement": "bottom"}
+      },
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}},
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "text",
+      "title": "Vodici Service - Analitika",
+      "gridPos": {"h": 2, "w": 24, "x": 0, "y": 10},
+      "options": {
+        "content": "## Vodici Service\nPodaci o vodicima, sertifikatima i jezicima.",
+        "mode": "markdown"
+      }
+    },
+    {
+      "id": 6,
+      "type": "barchart",
+      "title": "Vodici po prosečnoj oceni",
+      "description": "Raspodela vodica prema oceni",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 12},
+      "datasource": {"type": "mysql", "uid": "mysql-db"},
+      "targets": [
+        {
+          "datasource": {"type": "mysql", "uid": "mysql-db"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT CONCAT(first_name, ' ', last_name) AS 'Vodic', COALESCE(rating, 0) AS 'Ocena' FROM ekoturizam_db.guide ORDER BY rating IS NULL, rating DESC",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "xField": "Vodic",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": true,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "tooltip": {"mode": "single"},
+        "legend": {"showLegend": false}
+      },
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}},
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "type": "piechart",
+      "title": "Sertifikati po izdavaču",
+      "description": "Distribucija sertifikata prema izdavačkom telu",
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 12},
+      "datasource": {"type": "mysql", "uid": "mysql-db"},
+      "targets": [
+        {
+          "datasource": {"type": "mysql", "uid": "mysql-db"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT issuing_body AS 'Izdavac', COUNT(*) AS 'Broj sertifikata' FROM ekoturizam_db.certification WHERE issuing_body IS NOT NULL GROUP BY issuing_body ORDER BY COUNT(*) DESC",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "pieType": "donut",
+        "displayLabels": ["name", "value", "percent"],
+        "reduceOptions": {
+          "values": true,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "tooltip": {"mode": "single"}
+      },
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}},
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "type": "barchart",
+      "title": "Vodici po broju jezika",
+      "description": "Koliko jezika svaki vodic govori",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 12},
+      "datasource": {"type": "mysql", "uid": "mysql-db"},
+      "targets": [
+        {
+          "datasource": {"type": "mysql", "uid": "mysql-db"},
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT CONCAT(g.first_name, ' ', g.last_name) AS 'Vodic', COUNT(gl.language_id) AS 'Broj jezika' FROM ekoturizam_db.guide g LEFT JOIN ekoturizam_db.guide_language gl ON g.id = gl.guide_id GROUP BY g.id, g.first_name, g.last_name ORDER BY COUNT(gl.language_id) DESC",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "xField": "Vodic",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": true,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "tooltip": {"mode": "single"},
+        "legend": {"showLegend": false}
+      },
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}},
+        "overrides": []
+      }
+    }
+  ]
+}
