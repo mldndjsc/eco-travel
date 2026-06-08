@@ -1,11 +1,11 @@
 CREATE TABLE IF NOT EXISTS adventure_category (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
     description TEXT
 );
 
 CREATE TABLE IF NOT EXISTS adventure (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
     description TEXT,
     difficulty VARCHAR(20) NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS adventure (
 );
 
 CREATE TABLE IF NOT EXISTS time_slot (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     adventure_id BIGINT NOT NULL REFERENCES adventure(id) ON DELETE CASCADE,
     start_time TIMESTAMP NOT NULL,
     end_time TIMESTAMP NOT NULL,
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS time_slot (
 );
 
 CREATE TABLE IF NOT EXISTS gear_requirement (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     adventure_id BIGINT NOT NULL REFERENCES adventure(id) ON DELETE CASCADE,
     name VARCHAR(150) NOT NULL,
     description TEXT,
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS gear_requirement (
 );
 
 CREATE TABLE IF NOT EXISTS adventure_review (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     adventure_id BIGINT NOT NULL REFERENCES adventure(id) ON DELETE CASCADE,
     rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
     comment TEXT,

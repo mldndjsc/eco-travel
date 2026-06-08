@@ -55,11 +55,11 @@ if (-not $SkipCleanup) {
 }
 
 # ─── KORAK 3: Build i pokretanje servisa ──────────────────
-Write-Step "3/5" "Pokretanje svih servisa (3 instance accommodation, rezervacije i finansije)..."
+Write-Step "3/5" "Pokretanje svih servisa (3 instance accommodation, rezervacije, finansije, avanture i vodici)..."
 if ($NoBuild) {
-    docker compose up -d --scale accommodation-service=3 --scale rezervacije-service=3 --scale finansije-service=3
+    docker compose up -d --scale accommodation-service=3 --scale rezervacije-service=3 --scale finansije-service=3 --scale avanture-service=3 --scale vodici-service=3
 } else {
-    docker compose up -d --build --scale accommodation-service=3 --scale rezervacije-service=3 --scale finansije-service=3
+    docker compose up -d --build --scale accommodation-service=3 --scale rezervacije-service=3 --scale finansije-service=3 --scale avanture-service=3 --scale vodici-service=3
 }
 
 if ($LASTEXITCODE -ne 0) {
@@ -112,22 +112,22 @@ Write-Host ""
 Write-Host "  Instance skaliranih servisa:" -ForegroundColor Cyan
 $containers = docker compose ps --format json 2>&1 | ConvertFrom-Json -ErrorAction SilentlyContinue
 if ($containers) {
-    foreach ($serviceName in @("accommodation-service", "rezervacije-service", "finansije-service")) {
+    foreach ($serviceName in @("accommodation-service", "rezervacije-service", "finansije-service", "avanture-service", "vodici-service")) {
         $serviceContainers = $containers | Where-Object { $_.Service -eq $serviceName }
         $count = ($serviceContainers | Measure-Object).Count
         if ($count -ge 3) {
-            Write-Ok "$serviceName: $count instance aktivno"
+            Write-Ok "${serviceName}: $count instance aktivno"
         } else {
-            Write-Warn "$serviceName: $count instanca (ocekivano 3)"
+            Write-Warn "${serviceName}: $count instanca (ocekivano 3)"
         }
     }
 } else {
-    foreach ($serviceName in @("accommodation-service", "rezervacije-service", "finansije-service")) {
+    foreach ($serviceName in @("accommodation-service", "rezervacije-service", "finansije-service", "avanture-service", "vodici-service")) {
         $serviceCount = (docker compose ps $serviceName 2>&1 | Select-String "Up").Count
         if ($serviceCount -ge 3) {
-            Write-Ok "$serviceName: $serviceCount instance aktivno"
+            Write-Ok "${serviceName}: $serviceCount instance aktivno"
         } else {
-            Write-Warn "$serviceName: $serviceCount instanca (ocekivano 3)"
+            Write-Warn "${serviceName}: $serviceCount instanca (ocekivano 3)"
         }
     }
 }

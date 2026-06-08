@@ -39,8 +39,8 @@ docker network prune -f &>/dev/null
 ok "Docker mreze ociscene."
 
 # ─── KORAK 3: Build i pokretanje servisa ──────────────────
-step "3/5" "Pokretanje svih servisa (3 instance accommodation, rezervacije i finansije)..."
-docker compose up -d --build --scale accommodation-service=3 --scale rezervacije-service=3 --scale finansije-service=3
+step "3/5" "Pokretanje svih servisa (3 instance accommodation, rezervacije, finansije, avanture i vodici)..."
+docker compose up -d --build --scale accommodation-service=3 --scale rezervacije-service=3 --scale finansije-service=3 --scale avanture-service=3 --scale vodici-service=3
 ok "Servisi pokrenuti."
 
 # ─── KORAK 4: Cekanje na infrastrukturu ───────────────────
@@ -74,7 +74,7 @@ check_service "Maintenance     " "http://localhost:8085/actuator/health"
 
 echo ""
 echo "  Instance skaliranih servisa:"
-for SERVICE_NAME in accommodation-service rezervacije-service finansije-service; do
+for SERVICE_NAME in accommodation-service rezervacije-service finansije-service avanture-service vodici-service; do
     SERVICE_COUNT=$(docker compose ps "$SERVICE_NAME" 2>/dev/null | grep -c "Up" || echo 0)
     if [ "$SERVICE_COUNT" -ge 3 ]; then
         ok "$SERVICE_NAME: $SERVICE_COUNT instance aktivno"

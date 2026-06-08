@@ -6,14 +6,18 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import java.util.List;
+
 public class FeignHeaderInterceptor implements RequestInterceptor {
 
-    private static final String[] PROPAGATED_HEADERS = {
-        "X-API-KEY",
-        "X-Trace-ID",
-        "X-User-Role",
-        "X-Authenticated-User"
-    };
+    private static final List<String> PROPAGATED_HEADERS = List.of(
+            "X-API-KEY",
+            "X-Trace-Id",
+            "X-User-Role",
+            "X-Authenticated-User",
+            "traceparent",
+            "tracestate"
+    );
 
     @Override
     public void apply(RequestTemplate template) {
