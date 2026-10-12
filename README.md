@@ -175,10 +175,4 @@ Each service has its own `README.md` with its data model and endpoints.
 
 ---
 
-## Team
 
-| Member | Services |
-|---|---|
-| [Mladen Đošić](https://github.com/mldndjsc) | gateway, auth, rezervacije, finansije, config server |
-| [Nikola Vasiljević](https://github.com/nikola-vasiljevic04) | accommodation, maintenance, Eureka |
-| [Vojislav Popović](https://github.com/Wojo16) | avanture, vodici |
